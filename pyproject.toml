@@ -22,6 +22,7 @@ sg-legal-download = "sg_legal_rag.ingestion.download:main"
 sg-legal-validate = "sg_legal_rag.ingestion.validation:main"
 sg-legal-validate-benchmark = "sg_legal_rag.ingestion.benchmark_validation:main"
 sg-legal-split = "sg_legal_rag.ingestion.splits:main"
+sg-legal-bm25 = "sg_legal_rag.retrieval.benchmark:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sg_legal_rag"]

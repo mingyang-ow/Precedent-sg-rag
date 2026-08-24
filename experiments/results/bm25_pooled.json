@@ -1,0 +1,122 @@
+{
+  "candidate_corpus": "upstream stage2_case_lookup.json raw Cited Case strings",
+  "configuration": {
+    "b": 0.75,
+    "idf": "log(1 + (N - df + 0.5) / (df + 0.5))",
+    "k1": 1.2,
+    "k_values": [
+      1,
+      5,
+      10,
+      20
+    ],
+    "max_queries": null,
+    "tie_break": "ascending candidate ID",
+    "tokenizer": "NFKC casefolded Unicode word tokens"
+  },
+  "corpus_size": 48298,
+  "index_build_ms": 257.9180859997905,
+  "modes": {
+    "authors_fact_pool": {
+      "latency_ms": {
+        "mean": 0.8259931746121383,
+        "p50": 0.8024264998311992,
+        "p95": 0.94665894996524
+      },
+      "metrics": {
+        "mrr": 0.01074741932578801,
+        "ndcg_at_1": 0.002816334741500704,
+        "ndcg_at_10": 0.007836124021348714,
+        "ndcg_at_20": 0.012341796589888652,
+        "ndcg_at_5": 0.005135772589438781,
+        "recall_at_1": 0.002816334741500704,
+        "recall_at_10": 0.015892174612753975,
+        "recall_at_20": 0.03389660028163347,
+        "recall_at_5": 0.007443170388251861
+      },
+      "queries": 9942,
+      "relevant_documents_per_query": {
+        "max": 1,
+        "mean": 1.0,
+        "p50": 1.0,
+        "p95": 1.0
+      }
+    },
+    "paired_fact_only": {
+      "latency_ms": {
+        "mean": 0.8114231266633002,
+        "p50": 0.8030060002965911,
+        "p95": 0.9101249998821004
+      },
+      "metrics": {
+        "mrr": 0.010579810240443148,
+        "ndcg_at_1": 0.0024050506062731737,
+        "ndcg_at_10": 0.007910158947226409,
+        "ndcg_at_20": 0.012008161564608318,
+        "ndcg_at_5": 0.005212605968213455,
+        "recall_at_1": 0.0024050506062731737,
+        "recall_at_10": 0.01653472291812807,
+        "recall_at_20": 0.03286902495240004,
+        "recall_at_5": 0.007916624912315864
+      },
+      "queries": 9979,
+      "relevant_documents_per_query": {
+        "max": 1,
+        "mean": 1.0,
+        "p50": 1.0,
+        "p95": 1.0
+      }
+    },
+    "paired_facts_principle": {
+      "latency_ms": {
+        "mean": 0.8953443468288459,
+        "p50": 0.8781880001151876,
+        "p95": 1.0639887999786881
+      },
+      "metrics": {
+        "mrr": 0.021660009830822002,
+        "ndcg_at_1": 0.01272672612486221,
+        "ndcg_at_10": 0.019257286384496815,
+        "ndcg_at_20": 0.02390394285327951,
+        "ndcg_at_5": 0.01591660508531546,
+        "recall_at_1": 0.01272672612486221,
+        "recall_at_10": 0.02936165948491833,
+        "recall_at_20": 0.047800380799679326,
+        "recall_at_5": 0.01893977352440124
+      },
+      "queries": 9979,
+      "relevant_documents_per_query": {
+        "max": 1,
+        "mean": 1.0,
+        "p50": 1.0,
+        "p95": 1.0
+      }
+    },
+    "paired_principle_only": {
+      "latency_ms": {
+        "mean": 0.856040076357863,
+        "p50": 0.8318970003529103,
+        "p95": 1.0410250998575066
+      },
+      "metrics": {
+        "mrr": 0.021693257212565573,
+        "ndcg_at_1": 0.01453051407956709,
+        "ndcg_at_10": 0.01948979096754786,
+        "ndcg_at_20": 0.021854222160175567,
+        "ndcg_at_5": 0.016941797713642934,
+        "recall_at_1": 0.01453051407956709,
+        "recall_at_10": 0.027257240204429302,
+        "recall_at_20": 0.0366770217456659,
+        "recall_at_5": 0.01934061529211344
+      },
+      "queries": 9979,
+      "relevant_documents_per_query": {
+        "max": 1,
+        "mean": 1.0,
+        "p50": 1.0,
+        "p95": 1.0
+      }
+    }
+  },
+  "protocol": "pooled"
+}
