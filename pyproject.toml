@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "precedent-sg-rag"
+version = "0.1.0"
+description = "Reproducible evaluation of Singapore legal citation retrieval and grounded RAG"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.9",
+]
+
+[project.scripts]
+sg-legal-download = "sg_legal_rag.ingestion.download:main"
+sg-legal-validate = "sg_legal_rag.ingestion.validation:main"
+sg-legal-validate-benchmark = "sg_legal_rag.ingestion.benchmark_validation:main"
+sg-legal-split = "sg_legal_rag.ingestion.splits:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sg_legal_rag"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

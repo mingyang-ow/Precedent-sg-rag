@@ -1,0 +1,28 @@
+dataset_id = "anonymousmeowmeow/SG-LegalCite"
+revision = "3b25b337bcd2e0e7547570f170028900c931ebbd"
+source_url = "https://huggingface.co/datasets/anonymousmeowmeow/SG-LegalCite"
+license = "CC-BY-4.0"
+
+[[files]]
+name = "COMBINED_ALL_CASES_FINAL_V2.csv"
+role = "core"
+size = 763955275
+sha256 = "22994a94441fe8d7ea3d3ad19a43c25d908b23127cef6c3dd2a49bd3e33aad5e"
+
+[[files]]
+name = "stage2_case_lookup.json"
+role = "benchmark"
+size = 3453813
+sha256 = "6ad8f9d677c3e688cd84abc917f23ee664cbe47c292e4691faa507cca9455a18"
+
+[[files]]
+name = "stage2_direct_candidate_pools_v2.json"
+role = "benchmark"
+size = 131694340
+sha256 = "676a86cd9ee964ef67e51166e393bfe8b4dc1270ed090459c231affbef3d6aaa"
+
+[[files]]
+name = "stage2_single_stage_pools.json"
+role = "benchmark"
+size = 144103019
+sha256 = "1a800864313a8713b40e620e472ced278d8b55d9753493a6dd6ab5dda3b1c80e"
