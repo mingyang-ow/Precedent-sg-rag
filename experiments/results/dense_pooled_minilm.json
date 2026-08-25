@@ -1,0 +1,152 @@
+{
+  "candidate_corpus": "upstream stage2_case_lookup.json raw Cited Case strings",
+  "configuration": {
+    "device": "cpu",
+    "k_values": [
+      1,
+      5,
+      10,
+      20
+    ],
+    "max_queries": null,
+    "model_load_ms": 2364.2876209996757,
+    "model_max_sequence_length": 256,
+    "score_batch_size": 64,
+    "similarity": "cosine via normalized embeddings and dot product",
+    "tie_break": "ascending candidate ID"
+  },
+  "corpus_size": 48298,
+  "encoding": {
+    "corpus": {
+      "cache_file": "1110a243fdf4_pooled_corpus_c9854b44f802b39c.npy",
+      "cache_hit": true,
+      "elapsed_ms": 0.41879800028254976,
+      "shape": [
+        48298,
+        384
+      ]
+    },
+    "queries": {
+      "cache_file": "1110a243fdf4_pooled_queries_60cdfea97ca18ebf.npy",
+      "cache_hit": false,
+      "elapsed_ms": 217236.9829569998,
+      "shape": [
+        15546,
+        384
+      ]
+    },
+    "unique_query_texts": 15546
+  },
+  "model": {
+    "dimensions": 384,
+    "encode_batch_size": 128,
+    "key": "minilm",
+    "license": "Apache-2.0",
+    "model_id": "sentence-transformers/all-MiniLM-L6-v2",
+    "query_prefix": "",
+    "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+  },
+  "modes": {
+    "authors_fact_pool": {
+      "latency_ms": {
+        "mean": 0.6820778318326665,
+        "p50": 0.5812499994135578,
+        "p95": 1.4178699003878101
+      },
+      "metrics": {
+        "mrr": 0.019111350016173437,
+        "ndcg_at_1": 0.004828002414001207,
+        "ndcg_at_10": 0.017594613113995874,
+        "ndcg_at_20": 0.024400963147502962,
+        "ndcg_at_5": 0.012057552888763857,
+        "recall_at_1": 0.004828002414001207,
+        "recall_at_10": 0.0372158519412593,
+        "recall_at_20": 0.06437336552001609,
+        "recall_at_5": 0.019814926574129955
+      },
+      "queries": 9942,
+      "relevant_documents_per_query": {
+        "max": 1,
+        "mean": 1.0,
+        "p50": 1.0,
+        "p95": 1.0
+      }
+    },
+    "paired_fact_only": {
+      "latency_ms": {
+        "mean": 0.7086742681618617,
+        "p50": 0.5935930003033718,
+        "p95": 1.556948500183353
+      },
+      "metrics": {
+        "mrr": 0.019319626768675685,
+        "ndcg_at_1": 0.004910311654474396,
+        "ndcg_at_10": 0.017569585456024273,
+        "ndcg_at_20": 0.0243281176689847,
+        "ndcg_at_5": 0.01216750174081747,
+        "recall_at_1": 0.004910311654474396,
+        "recall_at_10": 0.03637639041988175,
+        "recall_at_20": 0.06343320974045495,
+        "recall_at_5": 0.019641246617897585
+      },
+      "queries": 9979,
+      "relevant_documents_per_query": {
+        "max": 1,
+        "mean": 1.0,
+        "p50": 1.0,
+        "p95": 1.0
+      }
+    },
+    "paired_facts_principle": {
+      "latency_ms": {
+        "mean": 0.6864223902212776,
+        "p50": 0.5880620001335046,
+        "p95": 1.4119655993454219
+      },
+      "metrics": {
+        "mrr": 0.025673002036625023,
+        "ndcg_at_1": 0.011023148612085379,
+        "ndcg_at_10": 0.023763094199130717,
+        "ndcg_at_20": 0.030644914040893305,
+        "ndcg_at_5": 0.019170824163222997,
+        "recall_at_1": 0.011023148612085379,
+        "recall_at_10": 0.04208838560978054,
+        "recall_at_20": 0.06954604669806594,
+        "recall_at_5": 0.027658081972141497
+      },
+      "queries": 9979,
+      "relevant_documents_per_query": {
+        "max": 1,
+        "mean": 1.0,
+        "p50": 1.0,
+        "p95": 1.0
+      }
+    },
+    "paired_principle_only": {
+      "latency_ms": {
+        "mean": 0.6842872292794672,
+        "p50": 0.5768720002379268,
+        "p95": 1.4711159996295466
+      },
+      "metrics": {
+        "mrr": 0.025450290121577065,
+        "ndcg_at_1": 0.012426094799078065,
+        "ndcg_at_10": 0.02333978970087593,
+        "ndcg_at_20": 0.02923265248720346,
+        "ndcg_at_5": 0.019474246283836916,
+        "recall_at_1": 0.012426094799078065,
+        "recall_at_10": 0.03848080970037078,
+        "recall_at_20": 0.06213047399539032,
+        "recall_at_5": 0.02645555666900491
+      },
+      "queries": 9979,
+      "relevant_documents_per_query": {
+        "max": 1,
+        "mean": 1.0,
+        "p50": 1.0,
+        "p95": 1.0
+      }
+    }
+  },
+  "protocol": "pooled"
+}
