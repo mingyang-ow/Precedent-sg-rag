@@ -1,0 +1,17 @@
+[bm25]
+k1 = 1.2
+b = 0.75
+
+[dense]
+model_key = "bge_small"
+
+[fusion]
+method = "weighted_rrf"
+rank_constant = 60
+component_depth = 1000
+bm25_weight = 1.0
+dense_weight = 1.0
+
+[evaluation]
+k_values = [1, 5, 10, 20]
+score_batch_size = 64

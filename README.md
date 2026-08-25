@@ -6,7 +6,7 @@ An evaluation-first Singapore legal citation retrieval and grounded RAG project 
 The system is an engineering benchmark, not a legal-advice service. Dataset validation, retrieval
 protocols, and failure analysis are treated as first-class outputs.
 
-## Current scope: Phase 1 retrieval baselines
+## Current scope: Phase 2 hybrid retrieval
 
 - Reproducible download from an immutable Hugging Face revision.
 - Streaming schema, integrity, completeness, and extraction-quality checks.
@@ -14,6 +14,7 @@ protocols, and failure analysis are treated as first-class outputs.
 - Leakage audit across judgment identifiers, normalized case families, and cited targets.
 - Dependency-free BM25 with pooled and full-corpus evaluation protocols.
 - Exact cosine retrieval with three revision-pinned English embedding models.
+- Deterministic BM25 + BGE weighted reciprocal rank fusion.
 - Facts-only, principle-only, and facts-plus-principle ablations.
 - Recall@K, MRR, nDCG@K, latency, court, and year reporting.
 
@@ -35,6 +36,10 @@ uv run sg-legal-dense --protocol pooled --model bge_small \
   --output experiments/results/dense_pooled_bge_small.json
 uv run sg-legal-dense --protocol full --model bge_small \
   --output experiments/results/dense_full_bge_small.json
+uv run sg-legal-hybrid --protocol pooled \
+  --output experiments/results/hybrid_pooled_bm25_bge_rrf.json
+uv run sg-legal-hybrid --protocol full \
+  --output experiments/results/hybrid_full_bm25_bge_rrf.json
 uv run pytest
 ```
 
@@ -47,13 +52,15 @@ validation and split rationale, and [docs/dataset_profile.md](docs/dataset_profi
 observed Phase 0 findings. The first benchmark and failure analysis are in
 [docs/retrieval_baseline.md](docs/retrieval_baseline.md). The dense model comparison and Phase 1
 recommendation are in [docs/dense_baseline.md](docs/dense_baseline.md).
+The fixed-fusion hybrid experiment and its rejected-baseline analysis are in
+[docs/hybrid_baseline.md](docs/hybrid_baseline.md).
 
 ## Roadmap
 
 1. Dataset validation and leakage analysis. ✓
 2. Full-corpus BM25 baseline. ✓
 3. Dense retrieval model comparison. ✓
-4. Hybrid retrieval and reranking ablations.
+4. Hybrid retrieval baseline. ✓ Reranking and validation-tuned fusion are pending.
 5. Citation-constrained generation and component-level evaluation.
 6. API, experiment tracking, and observability.
 
