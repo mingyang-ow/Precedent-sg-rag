@@ -1,0 +1,13 @@
+[model]
+key = "tinybert_l2"
+model_id = "cross-encoder/ms-marco-TinyBERT-L2-v2"
+revision = "81d1926f67cb8eee2c2be17ca9f793c7c3bd20cc"
+license = "Apache-2.0"
+max_length = 512
+batch_size = 32
+
+[reranking]
+candidate_depth = 50
+
+[evaluation]
+k_values = [1, 5, 10, 20]
