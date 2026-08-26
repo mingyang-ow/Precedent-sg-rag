@@ -175,6 +175,7 @@ def _config_signature_payload(config: RAGConfig) -> dict[str, Any]:
         "automatic_retries": config.automatic_retries,
         "pricing_snapshot_date": config.pricing_snapshot_date,
         "manual_review_records": config.manual_review_records,
+        "prompt_signature": hashlib.sha256(SYSTEM_INSTRUCTIONS.encode("utf-8")).hexdigest(),
     }
 
 
@@ -569,10 +570,13 @@ def manual_review_template(
             if buckets[key] and len(selected) < count:
                 selected.append(buckets[key].pop(0))
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "instructions": (
             "Inspect query, evidence, and answer. Fill booleans without using outside legal "
-            "knowledge; semantic_entailment asks only whether the passage supports each claim."
+            "knowledge. Precedent relevance asks whether the passage supports identifying the "
+            "recommended authority, not whether the client ultimately satisfies its test. Review "
+            "the supported proposition, any necessary factual-application limitation, and any "
+            "unsupported factual conclusion separately."
         ),
         "records": [
             {
@@ -593,7 +597,10 @@ def manual_review_template(
                     for item in evaluate_record(record).validation.issues
                 ],
                 "review": {
+                    "precedent_relevance_supported": None,
                     "semantic_entailment": None,
+                    "factual_application_limit_appropriate": None,
+                    "unsupported_factual_conclusion_present": None,
                     "citation_complete": None,
                     "unsupported_claim_present": None,
                     "abstention_appropriate": None,

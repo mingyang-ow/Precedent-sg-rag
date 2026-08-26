@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "mapping_note": "The Ahmed Salim fixture is synthetic but structurally equivalent to the manually reviewed canary: it preserves the query issue, cited authority, three-part test, and unresolved factual application without copying the judgment passage.",
+  "fixtures": [
+    {
+      "id": "relevant_precedent_direct_test",
+      "query": "My client asks whether a duty of care arises for the claimed loss.",
+      "case_id": "case:1",
+      "case_name": "Authority A",
+      "passage": "Authority A states that the applicable duty test requires foreseeability, proximity, and whether it is fair, just and reasonable to impose a duty.",
+      "condition": "retrieved_context",
+      "expected_action": "answer",
+      "limitation_required": false,
+      "answer": {
+        "status": "answered",
+        "recommended_case_id": "case:1",
+        "explanation": "Authority A is relevant authority for the applicable duty test.",
+        "claims": [
+          {
+            "statement": "Authority A states the applicable duty test.",
+            "evidence_id": "E1",
+            "supporting_quote": "requires foreseeability, proximity, and whether it is fair, just and reasonable"
+          }
+        ]
+      }
+    },
+    {
+      "id": "same_precedent_unrelated_proposition",
+      "query": "My client relies on the partial defence of diminished responsibility.",
+      "case_id": "case:2",
+      "case_name": "Authority B",
+      "passage": "Authority B addresses the contractual measure of damages for late delivery and does not state any criminal-law test.",
+      "condition": "retrieved_context",
+      "expected_action": "abstain",
+      "limitation_required": false,
+      "answer": {
+        "status": "insufficient_evidence",
+        "recommended_case_id": null,
+        "explanation": "The supplied evidence does not support a precedent recommendation.",
+        "claims": []
+      }
+    },
+    {
+      "id": "relevant_test_unresolved_facts",
+      "query": "My client has a diagnosed disorder, but the evidence does not yet establish whether it substantially impaired responsibility.",
+      "case_id": "case:3",
+      "case_name": "Beta v Crown",
+      "passage": "Beta v Crown states that diminished responsibility requires an abnormality of mind arising from a qualifying cause that substantially impaired mental responsibility.",
+      "condition": "retrieved_context",
+      "expected_action": "answer",
+      "limitation_required": true,
+      "answer": {
+        "status": "answered",
+        "recommended_case_id": "case:3",
+        "explanation": "Beta v Crown is relevant authority for the diminished-responsibility test. The supplied evidence does not establish whether the present facts satisfy every requirement.",
+        "claims": [
+          {
+            "statement": "The precedent states the diminished-responsibility test.",
+            "evidence_id": "E1",
+            "supporting_quote": "requires an abnormality of mind arising from a qualifying cause that substantially impaired mental responsibility"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ambiguous_conflicting_evidence",
+      "query": "Which classification test governs the proposed scheme?",
+      "case_id": "case:4",
+      "case_name": "Authority C",
+      "passage": "Authority C records competing submissions about whether Test X or Test Y governs, but the court did not decide which test applies.",
+      "condition": "retrieved_context",
+      "expected_action": "abstain",
+      "limitation_required": false,
+      "answer": {
+        "status": "insufficient_evidence",
+        "recommended_case_id": null,
+        "explanation": "The supplied evidence does not support a precedent recommendation.",
+        "claims": []
+      }
+    },
+    {
+      "id": "ahmed_salim_regression",
+      "query": "My client, a minor with major depressive disorder, faces culpable homicide after diminished responsibility was accepted in place of murder.",
+      "case_id": "case:941",
+      "case_name": "Ahmed Salim v Public Prosecutor [2022]",
+      "passage": "Ahmed Salim v Public Prosecutor is authority for three cumulative diminished-responsibility requirements: abnormality of mind, a qualifying cause, and substantial impairment of mental responsibility.",
+      "condition": "oracle_gold_context",
+      "expected_action": "answer",
+      "limitation_required": true,
+      "answer": {
+        "status": "answered",
+        "recommended_case_id": "case:941",
+        "explanation": "Ahmed Salim is relevant authority for the three cumulative diminished-responsibility requirements. The supplied evidence does not establish whether the present client satisfies those requirements.",
+        "claims": [
+          {
+            "statement": "Ahmed Salim states three cumulative diminished-responsibility requirements.",
+            "evidence_id": "E1",
+            "supporting_quote": "authority for three cumulative diminished-responsibility requirements"
+          }
+        ]
+      }
+    }
+  ]
+}

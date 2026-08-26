@@ -8,15 +8,15 @@
     "selection_policy": "facts-only answer-expected oracle-gold with lowest package ID"
   },
   "canary_estimate": {
-    "expected_cost_usd_no_cache": 0.00044320000000000004,
+    "expected_cost_usd_no_cache": 0.0004674,
     "expected_output_tokens": 180,
-    "input_tokens": 1136,
+    "input_tokens": 1257,
     "input_tokens_per_request": {
-      "max": 1136,
-      "mean": 1136.0,
-      "min": 1136
+      "max": 1257,
+      "mean": 1257.0,
+      "min": 1257
     },
-    "maximum_cost_usd_no_cache": 0.0009472,
+    "maximum_cost_usd_no_cache": 0.0009714,
     "maximum_output_tokens": 600,
     "method": "local tokenizer estimate including instructions, JSON schema, prompt, and fixed request overhead; server accounting may differ",
     "pricing_snapshot_date": "2026-08-26",
@@ -29,15 +29,15 @@
     "tokenizer": "tiktoken:model:gpt-5.6-luna"
   },
   "estimate": {
-    "expected_cost_usd_no_cache": 0.2229992,
+    "expected_cost_usd_no_cache": 0.23151760000000002,
     "expected_output_tokens": 63360,
-    "input_tokens": 734836,
+    "input_tokens": 777428,
     "input_tokens_per_request": {
-      "max": 3794,
-      "mean": 2087.6022727272725,
-      "min": 1069
+      "max": 3915,
+      "mean": 2208.6022727272725,
+      "min": 1190
     },
-    "maximum_cost_usd_no_cache": 0.4004072,
+    "maximum_cost_usd_no_cache": 0.4089256,
     "maximum_output_tokens": 211200,
     "method": "local tokenizer estimate including instructions, JSON schema, prompt, and fixed request overhead; server accounting may differ",
     "pricing_snapshot_date": "2026-08-26",
@@ -12412,8 +12412,8 @@
     "max_output_tokens": 600,
     "model": "gpt-5.6-luna",
     "output_schema_signature": "61e54fb6213abad2a8975479641a6e5f9b19e44361c826061cbfbb856bb87eeb",
-    "prompt_signature": "82cdf31cdf3e181f6802cf2930b6181f709ff642789d866e3b53bb3bc8ed734e",
-    "prompt_version": "rag-v1",
+    "prompt_signature": "29fa06887d945fd91959c89b6d9637d0cb732beb21ae4f5d2bd001aa9e3446be",
+    "prompt_version": "rag-v2",
     "reasoning_effort": "none",
     "seed": null,
     "temperature": null,
@@ -13202,15 +13202,15 @@
     ]
   },
   "pilot_estimate": {
-    "expected_cost_usd_no_cache": 0.0080406,
+    "expected_cost_usd_no_cache": 0.008331,
     "expected_output_tokens": 2160,
-    "input_tokens": 27243,
+    "input_tokens": 28695,
     "input_tokens_per_request": {
-      "max": 3563,
-      "mean": 2270.25,
-      "min": 1136
+      "max": 3684,
+      "mean": 2391.25,
+      "min": 1257
     },
-    "maximum_cost_usd_no_cache": 0.0140886,
+    "maximum_cost_usd_no_cache": 0.014379,
     "maximum_output_tokens": 7200,
     "method": "local tokenizer estimate including instructions, JSON schema, prompt, and fixed request overhead; server accounting may differ",
     "pricing_snapshot_date": "2026-08-26",
@@ -13225,7 +13225,7 @@
   "protocol": "bounded_grounded_rag_methodology_v2",
   "provider": "OpenAI Responses API",
   "reasoning_effort": "none",
-  "run_signature": "cdb5d23f479d2452da76f7f7",
+  "run_signature": "b1ce0f7b4a99cc4e33f47a81",
   "schema_version": 3,
   "seed": null,
   "selection": {

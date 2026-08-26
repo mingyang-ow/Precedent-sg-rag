@@ -220,7 +220,7 @@ def settings() -> GenerationSettings:
         reasoning_effort="none",
         verbosity="low",
         max_output_tokens=600,
-        prompt_version="rag-v1",
+        prompt_version="rag-v2",
         input_usd_per_million=0.2,
         cached_input_usd_per_million=0.02,
         output_usd_per_million=1.2,

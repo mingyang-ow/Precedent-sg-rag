@@ -7,12 +7,15 @@ inference because the Responses API request used the obsolete top-level `verbosi
 one-call canary proved that the repaired provider, schema, parsing, and citation-validation path
 works, but it also exposed a methodology defect: the old "oracle" supplied an unrelated historical
 passage merely because it mentioned the labelled case. The model correctly abstained while the old
-evaluator incorrectly expected an answer.
+evaluator incorrectly expected an answer. After oracle repair, a second canary used manually
+verified evidence that identified *Ahmed Salim v Public Prosecutor* as authority for the three-part
+diminished-responsibility test. The model incorrectly abstained because the prompt did not clearly
+separate precedent relevance from ultimate factual application.
 
-The oracle and abstention methodology is now repaired offline. No API calls were made during this
-repair. The current decision is:
+The oracle, abstention, and prompt-sufficiency methodology is now repaired offline. No API calls
+were made during this prompt repair. The current decision is:
 
-> **METHODOLOGY REPAIRED OFFLINE — PAID INFERENCE HOLD**
+> **PROMPT METHODOLOGY REPAIRED OFFLINE — ONE-CALL CANARY HOLD**
 
 The hold is deliberate: paid inference requires explicit approval after reviewing the request and
 cost forecast below. This document must be updated with measured results and a manual semantic
@@ -31,8 +34,7 @@ configuration, while every cache record stores the actual `response.model` retur
 
 This is separately billed OpenAI API usage. It does not consume a ChatGPT subscription or a Codex
 interactive allowance. The prior failed pilot attempt made 12 rejected API requests with no model
-output. The later separately approved canary made exactly one successful request. This repair made
-none.
+output. Two later canaries each made exactly one successful request. This repair made none.
 
 ## Frozen experiment
 
@@ -71,6 +73,12 @@ compares the full frozen protocol and evidence lock.
 Full prompts, evidence, outputs, provider metadata, latency, token use, and estimated cost are
 cached per record under ignored `data/processed/generation/` paths.
 
+Prompt `rag-v2` has signature
+`29fa06887d945fd91959c89b6d9637d0cb732beb21ae4f5d2bd001aa9e3446be`, producing run
+signature `b1ce0f7b4a99cc4e33f47a81`. The prompt text and version are part of the cache identity. The
+global evidence signature remains
+`39d7ce7a0e8a0164712b4dbf1b4fa042b49222c1b6f409f800d0e95805cd29fe`.
+
 The 96 sampled query IDs and their strata are byte-for-byte unchanged from methodology v1. Of the
 352 expected actions, 290 changed: 76 retrieved `answer` labels and 212 retrieved `abstain` labels
 became `unknown_needs_review`, as did two oracle rows whose labelled citation relationship could
@@ -79,10 +87,17 @@ ignored `data/processed/rag_sufficiency_review.json` file contains the private r
 
 ## Prompt and output contract
 
-The prompt allows only supplied evidence. It prohibits outside legal knowledge, invented cases,
-sources, propositions, and quotations. An answer must select a supplied `case_id`, express at most
-four atomic claims, cite the supplied `evidence_id` for each claim, and copy a short verbatim quote.
-If the evidence is absent or too weak, it must return the fixed explicit abstention.
+Prompt `rag-v2` allows only supplied evidence and prohibits outside legal knowledge, invented
+cases, sources, propositions, and quotations. Answerability means that the passage supports
+identifying a precedent as relevant authority for a legal principle, rule, or test; it does not
+mean that the passage resolves whether the client's facts satisfy that test. When the passage
+states a directly applicable test, the model should answer and disclose unresolved factual
+application in `explanation`. Case identity alone remains insufficient, and absent, unrelated,
+ambiguous, or too-weak evidence requires the fixed abstention.
+
+An answer must select a supplied `case_id`, express at most four atomic claims, cite the supplied
+`evidence_id` for each claim, and copy a short verbatim quote. It must not claim that the present
+facts satisfy a test unless the passage supports that application.
 
 The typed output has four fields:
 
@@ -121,9 +136,9 @@ Automated metrics are computed before any model-based or manual judgment:
 - latency, token use, estimated cost, query mode, top-k, and warm/cold breakdowns.
 
 Exact quotation is not semantic entailment. A deterministic 36-record review template is therefore
-created after inference, balanced over mode and condition. A human reviewer must label semantic
-support, citation completeness, unsupported claims, and abstention appropriateness. An LLM judge is
-not treated as ground truth.
+created after inference, balanced over mode and condition. Its rubric separates precedent
+relevance, proposition support, factual-application limitations, unsupported factual conclusions,
+citation completeness, and abstention appropriateness. An LLM judge is not treated as ground truth.
 
 The model-quality failure analysis keeps provider, retrieval identity, evidence sufficiency, and
 generation behavior separate:
@@ -149,8 +164,8 @@ cached input tokens, and $1.20 per million output tokens.
 
 | Run | Calls | Estimated input | Expected output | Configured output ceiling | Expected cost | Ceiling cost |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Small pilot | 12 | 27,243 | 2,160 | 7,200 | $0.0080 | $0.0141 |
-| Full baseline | 352 | 734,836 | 63,360 | 211,200 | $0.2230 | $0.4004 |
+| Small pilot | 12 | 28,695 | 2,160 | 7,200 | $0.0083 | $0.0144 |
+| Full baseline | 352 | 777,428 | 63,360 | 211,200 | $0.2315 | $0.4089 |
 
 The 12-call pilot contains six records per query mode: an answer-expected oracle warm-success
 record, target-present retrieved records at depths 1 and 5, a warm retrieval-failure at depth 5,
@@ -188,9 +203,9 @@ uv run sg-legal-rag-evaluate
 ```
 
 The billed path requires the explicit `--execute` flag. It must not be used until a new request plan
-has been approved. `--canary` restricts that path to one frozen, answer-expected facts-only
-`oracle_gold_context` record; `--pilot` restricts it to the fixed 12-record pilot. No inference is
-authorized by this repair.
+has been approved. `--canary` restricts that path to the manually verified Ahmed Salim
+`oracle_gold_context` package `0362866e90548d293669f8d3`; `--pilot` restricts it to the fixed
+12-record pilot. No inference is authorized by this repair.
 
 ## Completion gate
 
