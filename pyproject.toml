@@ -22,6 +22,11 @@ dense = [
   "sentence-transformers>=5.1,<6",
   "torch>=2.6,<3",
 ]
+generation = [
+  "openai>=2.20,<3",
+  "pydantic>=2.10,<3",
+  "tiktoken>=0.12,<1",
+]
 
 [project.scripts]
 sg-legal-download = "sg_legal_rag.ingestion.download:main"
@@ -33,6 +38,7 @@ sg-legal-dense = "sg_legal_rag.retrieval.dense_benchmark:main"
 sg-legal-hybrid = "sg_legal_rag.retrieval.hybrid_benchmark:main"
 sg-legal-rerank = "sg_legal_rag.retrieval.reranker_benchmark:main"
 sg-legal-corpus-repair = "sg_legal_rag.retrieval.corpus_repair_benchmark:main"
+sg-legal-rag-evaluate = "sg_legal_rag.generation.benchmark:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sg_legal_rag"]
