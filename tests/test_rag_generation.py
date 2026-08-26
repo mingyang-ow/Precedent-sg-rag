@@ -1,14 +1,33 @@
 from __future__ import annotations
 
+import copy
+import json
+import os
+import subprocess
+import sys
 from collections import Counter
 from types import SimpleNamespace
 
+import httpx
 import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from sg_legal_rag.generation.benchmark import select_pilot
-from sg_legal_rag.generation.evaluation import evaluate_record, validate_answer
+from sg_legal_rag.generation.benchmark import (
+    RAGConfig,
+    all_generation_attempts_failed,
+    assert_frozen_manifest,
+    build_manifest,
+    evidence_freeze,
+    select_canary,
+    select_pilot,
+)
+from sg_legal_rag.generation.evaluation import (
+    EvaluationStatus,
+    evaluate_record,
+    summarize_records,
+    validate_answer,
+)
 from sg_legal_rag.generation.evidence import (
     EvidenceCondition,
     EvidencePackage,
@@ -22,9 +41,11 @@ from sg_legal_rag.generation.provider import (
     GenerationRecord,
     GenerationSettings,
     OpenAIResponsesGenerator,
+    ProviderCallStatus,
     ProviderResult,
     TokenUsage,
     cache_path,
+    generate_record,
     load_record,
     render_user_input,
     save_record,
@@ -171,6 +192,7 @@ def record_for(
     settings: GenerationSettings,
     *,
     error: str | None = None,
+    response_id: str | None = "resp_test",
 ) -> GenerationRecord:
     return GenerationRecord(
         run_signature="signature",
@@ -182,7 +204,7 @@ def record_for(
         result=ProviderResult(
             requested_model=settings.model,
             returned_model=settings.model,
-            response_id="resp_test",
+            response_id=response_id,
             generated_at="2026-08-26T00:00:00+00:00",
             latency_ms=10,
             usage=TokenUsage(
@@ -305,6 +327,127 @@ def test_package_matrix_and_fixed_pilot_cover_all_conditions(
     assert {item.warm_start for item in pilot} == {True, False}
 
 
+def test_bm25_scores_are_identical_across_python_hash_seeds() -> None:
+    code = """
+import json
+from sg_legal_rag.retrieval.bm25 import BM25Index
+terms = [f"term{i}" for i in range(80)]
+documents = [
+    " ".join(term for i, term in enumerate(terms) for _ in range((i % 7) + 1)),
+    " ".join(terms[::2]),
+    " ".join(terms[1::3]),
+]
+scores = BM25Index(documents).scores(" ".join(terms))
+print(json.dumps(scores, sort_keys=True, separators=(",", ":")))
+"""
+    outputs = []
+    for seed in ("1", "2", "77", "random"):
+        environment = os.environ.copy()
+        environment["PYTHONHASHSEED"] = seed
+        outputs.append(
+            subprocess.check_output(
+                [sys.executable, "-c", code],
+                env=environment,
+                text=True,
+            ).strip()
+        )
+
+    assert len(set(outputs)) == 1
+
+
+def test_repeated_reconstruction_has_identical_evidence_signature(
+    corpus: CorpusRepairDataset, case_to_id: dict[str, int]
+) -> None:
+    def reconstruct() -> dict[str, object]:
+        rebuilt_index = BM25Index([item.text for item in corpus.contexts])
+        selected = select_queries(
+            modes=("facts_only", "facts_principle"),
+            dataset=corpus,
+            index=rebuilt_index,
+            case_to_id=case_to_id,
+            per_stratum=1,
+            retrieval_depth=5,
+            seed=42,
+        )
+        packages = build_packages(
+            selected,
+            top_ks=(1, 3, 5),
+            index=rebuilt_index,
+            dataset=corpus,
+            case_to_id=case_to_id,
+        )
+        return evidence_freeze(packages)
+
+    assert reconstruct() == reconstruct()
+
+
+def test_evidence_signature_excludes_non_prompt_retrieval_floats(
+    corpus: CorpusRepairDataset, index: BM25Index, case_to_id: dict[str, int]
+) -> None:
+    package = retrieved_package(corpus, index, case_to_id, 0)
+    item = package.evidence[0]
+    assert item.retrieval_score is not None
+    perturbed_item = item.model_copy(update={"retrieval_score": item.retrieval_score + 1e-12})
+    perturbed_package = package.model_copy(update={"evidence": (perturbed_item,)})
+
+    assert evidence_freeze((package,)) == evidence_freeze((perturbed_package,))
+
+
+def test_manifest_freezes_evidence_and_rejects_reconstruction_drift(
+    corpus: CorpusRepairDataset,
+    index: BM25Index,
+    case_to_id: dict[str, int],
+    settings: GenerationSettings,
+) -> None:
+    selected = select_queries(
+        modes=("facts_only", "facts_principle"),
+        dataset=corpus,
+        index=index,
+        case_to_id=case_to_id,
+        per_stratum=1,
+        retrieval_depth=5,
+        seed=42,
+    )
+    packages = build_packages(
+        selected,
+        top_ks=(1, 3, 5),
+        index=index,
+        dataset=corpus,
+        case_to_id=case_to_id,
+    )
+    config = RAGConfig(
+        modes=("facts_only", "facts_principle"),
+        top_ks=(1, 3, 5),
+        queries_per_stratum=1,
+        seed=42,
+        settings=settings,
+        expected_output_tokens=180,
+        automatic_retries=0,
+        pricing_snapshot_date="2026-08-26",
+        manual_review_records=12,
+    )
+    pilot = select_pilot(packages)
+    canary = select_canary(packages)
+    manifest = build_manifest(
+        config=config,
+        signature="test-signature",
+        selected=selected,
+        packages=packages,
+        pilot=pilot,
+        canary=canary,
+    )
+
+    assert manifest["evidence_freeze"]["signature"]
+    assert len(manifest["evidence_freeze"]["packages"]) == len(packages)
+    assert all(lock["evidence_digests"] for lock in manifest["evidence_freeze"]["packages"])
+    assert_frozen_manifest(manifest, copy.deepcopy(manifest))
+
+    drifted = copy.deepcopy(manifest)
+    drifted["evidence_freeze"]["packages"][0]["evidence_digests"][0]["passage_digest"] = "changed"
+    with pytest.raises(ValueError, match="frozen evidence signature mismatch"):
+        assert_frozen_manifest(manifest, drifted)
+
+
 def test_output_schema_rejects_invalid_status_contract_and_extra_fields() -> None:
     with pytest.raises(ValidationError, match="requires at least one cited claim"):
         GroundedAnswer(
@@ -376,8 +519,98 @@ def test_correct_abstention_and_inappropriate_answer_have_separate_failure_layer
     assert improper.retrieval_generation_layer == (
         "3_retrieval_incorrect_generation_grounded_to_wrong_evidence"
     )
-    assert improper.abstention_layer == ("6_insufficient_evidence_inappropriate_answer_or_error")
+    assert improper.abstention_layer == "6_insufficient_evidence_inappropriate_answer"
     assert improper.inappropriate_answer
+
+
+def test_provider_failure_is_not_scored_as_an_abstention_failure(
+    corpus: CorpusRepairDataset,
+    index: BM25Index,
+    case_to_id: dict[str, int],
+    settings: GenerationSettings,
+) -> None:
+    package = retrieved_package(corpus, index, case_to_id, 1)
+    failed = record_for(
+        package,
+        None,
+        settings,
+        error="BadRequestError: invalid request",
+        response_id=None,
+    )
+    outcome = evaluate_record(failed)
+    summary = summarize_records([failed])
+
+    assert failed.result.call_status is ProviderCallStatus.PROVIDER_API_FAILURE
+    assert outcome.evaluation_status is EvaluationStatus.PROVIDER_API_FAILURE
+    assert outcome.primary_failure_layer == "0_provider_api_failure"
+    assert outcome.abstention_layer is None
+    assert not outcome.abstention_correct
+    assert not outcome.inappropriate_answer
+    assert summary["provider_api_failures"] == 1
+    assert summary["structured_output_failures"] == 0
+    assert summary["abstention_recall"] is None
+    assert summary["inappropriate_answer_rate"] is None
+    assert all_generation_attempts_failed([failed], [failed])
+
+
+def test_structured_output_failure_has_its_own_status(
+    corpus: CorpusRepairDataset,
+    index: BM25Index,
+    case_to_id: dict[str, int],
+    settings: GenerationSettings,
+) -> None:
+    package = retrieved_package(corpus, index, case_to_id, 0)
+    failed = record_for(
+        package,
+        None,
+        settings,
+        error="response did not contain a parsed answer",
+    )
+    outcome = evaluate_record(failed)
+
+    assert failed.result.call_status is ProviderCallStatus.STRUCTURED_OUTPUT_FAILURE
+    assert outcome.evaluation_status is EvaluationStatus.STRUCTURED_OUTPUT_FAILURE
+    assert outcome.primary_failure_layer == "0_structured_output_failure"
+    assert outcome.retrieval_generation_layer is None
+    assert outcome.abstention_layer is None
+
+
+def test_sdk_schema_validation_exception_is_structured_output_failure(
+    corpus: CorpusRepairDataset,
+    index: BM25Index,
+    case_to_id: dict[str, int],
+    settings: GenerationSettings,
+) -> None:
+    package = retrieved_package(corpus, index, case_to_id, 0)
+
+    class InvalidStructuredGenerator:
+        def generate(self, package, settings):
+            GroundedAnswer.model_validate({"status": "answered"})
+
+    record = generate_record(
+        InvalidStructuredGenerator(),
+        package,
+        settings,
+        "signature",
+    )
+
+    assert record.result.call_status is ProviderCallStatus.STRUCTURED_OUTPUT_FAILURE
+    assert evaluate_record(record).evaluation_status is EvaluationStatus.STRUCTURED_OUTPUT_FAILURE
+
+
+def test_generation_command_failure_requires_at_least_one_usable_result(
+    corpus: CorpusRepairDataset,
+    index: BM25Index,
+    case_to_id: dict[str, int],
+    settings: GenerationSettings,
+) -> None:
+    package = retrieved_package(corpus, index, case_to_id, 0)
+    failed = record_for(package, None, settings, error="provider down", response_id=None)
+    succeeded = record_for(package, answer_for(package), settings)
+
+    assert all_generation_attempts_failed([failed], [failed, succeeded])
+    assert not all_generation_attempts_failed([succeeded], [failed, succeeded])
+    assert not all_generation_attempts_failed([], [failed, succeeded])
 
 
 def test_retrieval_correct_wrong_precedent_is_generation_layer_two(
@@ -443,8 +676,56 @@ def test_mock_responses_client_uses_structured_output_without_network(
     result = generator.generate(package, settings)
 
     assert captured["text_format"] is GroundedAnswer
+    assert captured["text"] == {"verbosity": "low"}
+    assert "verbosity" not in captured
     assert captured["store"] is False
     assert captured["reasoning"] == {"effort": "none"}
     assert result.answer == parsed
     assert result.returned_model == "gpt-5.6-luna-2026-08-01"
     assert result.usage.cached_input_tokens == 20
+
+
+def test_openai_sdk_serializes_verbosity_inside_text_with_json_schema(
+    corpus: CorpusRepairDataset,
+    index: BM25Index,
+    case_to_id: dict[str, int],
+    settings: GenerationSettings,
+) -> None:
+    from openai import BadRequestError, OpenAI
+
+    package = retrieved_package(corpus, index, case_to_id, 0)
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            400,
+            request=request,
+            json={
+                "error": {
+                    "message": "offline mock stop",
+                    "type": "invalid_request_error",
+                    "param": None,
+                    "code": None,
+                }
+            },
+        )
+
+    client = OpenAI(
+        api_key="offline-test-key",
+        max_retries=0,
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    generator = OpenAIResponsesGenerator(client)
+
+    with pytest.raises(BadRequestError, match="offline mock stop"):
+        generator.generate(package, settings)
+
+    assert "verbosity" not in captured
+    assert captured["text"]["verbosity"] == "low"
+    assert captured["text"]["format"]["type"] == "json_schema"
+    assert captured["text"]["format"]["strict"] is True
+    assert captured["model"] == "gpt-5.6-luna"
+    assert captured["reasoning"] == {"effort": "none"}
+    assert captured["max_output_tokens"] == 600
+    assert captured["store"] is False

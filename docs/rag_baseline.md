@@ -2,10 +2,12 @@
 
 ## Status
 
-Phase 3 is implemented and verified offline. The deterministic generation subset is frozen, but no
-model inference has been run. The current decision is therefore:
+Phase 3 is implemented and verified offline. The first 12-call pilot attempt was rejected before
+inference because the Responses API request used the obsolete top-level `verbosity` field. That
+provider-contract error is repaired, but no successful model output exists yet. The current
+decision is therefore:
 
-> **RAG GENERATION NOT YET RELIABLE — PRE-INFERENCE HOLD**
+> **RAG GENERATION NOT YET RELIABLE — ONE-CALL CANARY HOLD**
 
 The hold is deliberate: paid inference requires explicit approval after reviewing the request and
 cost forecast below. This document must be updated with measured results and a manual semantic
@@ -22,9 +24,9 @@ configuration, while every cache record stores the actual `response.model` retur
 - model page: <https://developers.openai.com/api/docs/models/gpt-5.6-luna>
 - Structured Outputs: <https://developers.openai.com/api/docs/guides/structured-outputs>
 
-This would be separately billed OpenAI API usage. It would not consume a ChatGPT subscription or a
-Codex interactive allowance. No API credential was configured during offline preparation, and no
-inference request was issued.
+This is separately billed OpenAI API usage. It does not consume a ChatGPT subscription or a Codex
+interactive allowance. The failed pilot attempt made 12 API requests, all rejected before
+inference; the provider reported no token usage and no model output.
 
 ## Frozen experiment
 
@@ -50,8 +52,11 @@ assisted-query comparison, not as evidence available to a real user at predictio
 
 The committed manifest at `experiments/samples/rag_baseline.json` preserves query IDs, package IDs,
 strata, conditions, depths, the run signature, and cost forecast without redistributing prompt
-passages. Full prompts, evidence, outputs, provider metadata, latency, token use, and estimated cost
-are cached per record under ignored `data/processed/generation/` paths.
+passages. It also freezes ordered passage digests, per-package model-visible evidence signatures,
+exact rendered-input signatures, and one global evidence signature. Before constructing an API
+client, the execution path reconstructs and compares the full frozen protocol and evidence lock.
+Full prompts, evidence, outputs, provider metadata, latency, token use, and estimated cost are
+cached per record under ignored `data/processed/generation/` paths.
 
 ## Prompt and output contract
 
@@ -90,14 +95,17 @@ created after inference, balanced over mode and condition. A human reviewer must
 support, citation completeness, unsupported claims, and abstention appropriateness. An LLM judge is
 not treated as ground truth.
 
-The failure analysis keeps retrieval/generation and abstention views separate:
+Provider/API and Structured Output failures are operational statuses and are excluded from
+abstention denominators. The model-quality failure analysis then keeps retrieval/generation and
+abstention views separate:
 
+0. provider/API or Structured Output failure, recorded as distinct statuses;
 1. retrieval correct, generation correct;
 2. retrieval correct, generation incorrect;
 3. retrieval incorrect, answer grounded to the wrong supplied evidence;
 4. retrieval incorrect, answer unsupported;
 5. insufficient evidence, correct abstention;
-6. insufficient evidence, inappropriate answer or provider/schema error.
+6. insufficient evidence, inappropriate model answer.
 
 A record can carry layer 3 or 4 in the retrieval/generation view and layer 6 in the abstention view.
 This avoids hiding whether an inappropriate answer was at least grounded to what retrieval supplied.
@@ -119,9 +127,9 @@ depths 1 and 5, warm retrieval-failure at depth 5, and cold-start evidence at de
 covers all three conditions, both query modes, warm/cold behavior, and the top-k endpoints.
 
 Automatic SDK retries are disabled (`max_retries=0`), so 352 logical calls mean 352 planned HTTP
-attempts. Cache resumption makes completed records free to reuse. The explicit `--retry-errors`
-option can add at most one later logical call for each failed cached record; it is never enabled by
-default.
+attempts. Cache resumption makes completed records free to reuse. The command exits non-zero when
+all provider attempts in an invocation fail. The explicit `--retry-errors` option can add at most
+one later logical call for each failed cached record; it is never enabled by default.
 
 ## Important assumptions and limitations
 
@@ -149,7 +157,9 @@ uv run sg-legal-rag-evaluate
 ```
 
 The billed path requires the explicit `--execute` flag. It must not be used until the request plan
-has been approved. `--pilot` restricts that path to the fixed 12-record pilot.
+has been approved. `--canary` restricts that path to one frozen, answer-expected facts-only oracle
+record; `--pilot` restricts it to the fixed 12-record pilot. The failed pilot must not be retried
+until a separately approved canary succeeds and the user approves a later run.
 
 ## Completion gate
 

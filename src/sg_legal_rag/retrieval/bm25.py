@@ -58,7 +58,9 @@ class BM25Index:
     def scores(
         self, query: str, candidate_indices: Iterable[int] | None = None
     ) -> dict[int, float]:
-        query_terms = set(tokenize(query)) & self.idf.keys()
+        # Floating-point addition is order-sensitive. Python set iteration changes with the
+        # process hash seed, so always accumulate BM25 term contributions in lexical order.
+        query_terms = tuple(sorted(set(tokenize(query)).intersection(self.idf)))
         if not query_terms:
             return {}
 

@@ -6,7 +6,7 @@ import json
 import sys
 import tomllib
 from collections import Counter, defaultdict
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -21,12 +21,13 @@ from sg_legal_rag.retrieval.corpus_repair_benchmark import (
 )
 
 from .evaluation import evaluate_record, grouped_summaries
-from .evidence import EvidenceCondition, EvidencePackage
+from .evidence import EvidenceCondition, EvidencePackage, prompt_evidence
 from .provider import (
     SYSTEM_INSTRUCTIONS,
     GenerationRecord,
     GenerationSettings,
     OpenAIResponsesGenerator,
+    ProviderCallStatus,
     cache_path,
     generate_record,
     load_record,
@@ -110,27 +111,67 @@ def load_config(path: Path) -> RAGConfig:
     return config
 
 
-def _signature(config: RAGConfig, packages: tuple[EvidencePackage, ...]) -> str:
-    payload = {
-        "cache_schema": 1,
-        "config": asdict(config),
-        "packages": [
+def _canonical_digest(payload: Any) -> str:
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def package_evidence_lock(package: EvidencePackage) -> dict[str, Any]:
+    visible_evidence = prompt_evidence(package)
+    return {
+        "package_id": package.package_id,
+        "query_id": package.query_id,
+        "condition": package.condition.value,
+        "top_k": package.top_k,
+        "evidence_digests": [
             {
-                "package_id": package.package_id,
-                "query_id": package.query_id,
-                "mode": package.query_mode,
-                "condition": package.condition.value,
-                "top_k": package.top_k,
-                "evidence": [
-                    [item.case_id, item.passage_digest, item.retrieval_score]
-                    for item in package.evidence
-                ],
+                "evidence_id": item.evidence_id,
+                "case_id": item.case_id,
+                "passage_digest": item.passage_digest,
             }
-            for package in packages
+            for item in package.evidence
         ],
+        "evidence_signature": _canonical_digest(visible_evidence),
+        "input_signature": hashlib.sha256(render_user_input(package).encode("utf-8")).hexdigest(),
     }
-    encoded = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str).encode()
-    return hashlib.sha256(encoded).hexdigest()[:24]
+
+
+def evidence_freeze(packages: tuple[EvidencePackage, ...]) -> dict[str, Any]:
+    locks = [package_evidence_lock(package) for package in packages]
+    return {
+        "algorithm": "sha256-canonical-json-v1",
+        "signature": _canonical_digest(locks),
+        "packages": locks,
+    }
+
+
+def _config_signature_payload(config: RAGConfig) -> dict[str, Any]:
+    return {
+        "modes": list(config.modes),
+        "top_ks": list(config.top_ks),
+        "queries_per_stratum": config.queries_per_stratum,
+        "seed": config.seed,
+        "settings": config.settings.model_dump(mode="json"),
+        "expected_output_tokens": config.expected_output_tokens,
+        "automatic_retries": config.automatic_retries,
+        "pricing_snapshot_date": config.pricing_snapshot_date,
+        "manual_review_records": config.manual_review_records,
+    }
+
+
+def _signature(config: RAGConfig, packages: tuple[EvidencePackage, ...]) -> str:
+    frozen_evidence = evidence_freeze(packages)
+    payload = {
+        "cache_schema": 2,
+        "config": _config_signature_payload(config),
+        "evidence_signature": frozen_evidence["signature"],
+    }
+    return _canonical_digest(payload)[:24]
 
 
 def _tokenizer(model: str) -> tuple[Any, str]:
@@ -227,6 +268,24 @@ def select_pilot(packages: tuple[EvidencePackage, ...]) -> tuple[EvidencePackage
     return tuple(chosen)
 
 
+def select_canary(packages: tuple[EvidencePackage, ...]) -> EvidencePackage:
+    """Choose one deterministic, answer-expected facts-only oracle record."""
+
+    candidates = sorted(
+        (
+            package
+            for package in packages
+            if package.condition is EvidenceCondition.ORACLE
+            and package.query_mode == "facts_only"
+            and package.answer_expected
+        ),
+        key=lambda package: package.package_id,
+    )
+    if not candidates:
+        raise ValueError("cannot construct an answer-expected facts-only oracle canary")
+    return candidates[0]
+
+
 def _counts(packages: tuple[EvidencePackage, ...]) -> dict[str, Any]:
     return {
         "conditions": dict(sorted(Counter(item.condition.value for item in packages).items())),
@@ -252,9 +311,11 @@ def build_manifest(
     selected: tuple[Any, ...],
     packages: tuple[EvidencePackage, ...],
     pilot: tuple[EvidencePackage, ...],
+    canary: EvidencePackage,
 ) -> dict[str, Any]:
+    frozen_evidence = evidence_freeze(packages)
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "run_signature": signature,
         "protocol": "bounded_grounded_rag",
         "model": config.settings.model,
@@ -265,6 +326,19 @@ def build_manifest(
         "seed": None,
         "reasoning_effort": config.settings.reasoning_effort,
         "automatic_retries": config.automatic_retries,
+        "generation_contract": {
+            "prompt_version": config.settings.prompt_version,
+            "prompt_signature": hashlib.sha256(SYSTEM_INSTRUCTIONS.encode("utf-8")).hexdigest(),
+            "output_schema_signature": _canonical_digest(GroundedAnswer.model_json_schema()),
+            "model": config.settings.model,
+            "reasoning_effort": config.settings.reasoning_effort,
+            "verbosity": config.settings.verbosity,
+            "max_output_tokens": config.settings.max_output_tokens,
+            "temperature": config.settings.temperature,
+            "seed": config.settings.seed,
+            "top_ks": list(config.top_ks),
+            "automatic_retries": config.automatic_retries,
+        },
         "selection": {
             "seed": config.seed,
             "queries_per_mode_per_stratum": config.queries_per_stratum,
@@ -295,10 +369,57 @@ def build_manifest(
             "logical_requests": len(pilot),
             "package_ids": [package.package_id for package in pilot],
             "counts": _counts(pilot),
+            "evidence_signature": evidence_freeze(pilot)["signature"],
         },
+        "canary": {
+            "logical_requests": 1,
+            "selection_policy": "facts-only answer-expected oracle with lowest package ID",
+            "package_id": canary.package_id,
+            "evidence_signature": package_evidence_lock(canary)["evidence_signature"],
+        },
+        "evidence_freeze": frozen_evidence,
         "estimate": estimate_tokens_and_cost(packages, config),
         "pilot_estimate": estimate_tokens_and_cost(pilot, config),
+        "canary_estimate": estimate_tokens_and_cost((canary,), config),
     }
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise TypeError(f"expected a JSON object: {path}")
+    return payload
+
+
+def assert_frozen_manifest(frozen: dict[str, Any], rebuilt: dict[str, Any]) -> None:
+    """Reject any API execution whose reconstructed protocol or evidence changed."""
+
+    required_keys = (
+        "schema_version",
+        "run_signature",
+        "protocol",
+        "model",
+        "temperature",
+        "seed",
+        "reasoning_effort",
+        "automatic_retries",
+        "generation_contract",
+        "selection",
+        "generation_plan",
+        "pilot",
+        "canary",
+    )
+    changed = [key for key in required_keys if frozen.get(key) != rebuilt.get(key)]
+    if changed:
+        raise ValueError(
+            "frozen evaluation protocol mismatch before API generation: " + ", ".join(changed)
+        )
+    frozen_evidence = frozen.get("evidence_freeze")
+    rebuilt_evidence = rebuilt.get("evidence_freeze")
+    if not isinstance(frozen_evidence, dict) or "signature" not in frozen_evidence:
+        raise ValueError("frozen manifest does not contain an evidence signature")
+    if frozen_evidence != rebuilt_evidence:
+        raise ValueError("frozen evidence signature mismatch before API generation")
 
 
 def write_json(path: Path, payload: Any) -> None:
@@ -366,6 +487,17 @@ def manual_review_template(
     }
 
 
+def all_generation_attempts_failed(
+    attempted_records: list[GenerationRecord], records: list[GenerationRecord]
+) -> bool:
+    """Fail fresh all-error runs and cached all-error resumptions."""
+
+    results = attempted_records if attempted_records else records
+    return bool(results) and all(
+        record.result.call_status is not ProviderCallStatus.SUCCEEDED for record in results
+    )
+
+
 def prepare(
     *, data_dir: Path, splits: Path, corpus_config_path: Path, rag_config_path: Path
 ) -> tuple[RAGConfig, tuple[Any, ...], tuple[EvidencePackage, ...], str]:
@@ -423,8 +555,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="make usage-billed API requests; omit for the safe offline preparation default",
     )
-    parser.add_argument(
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument(
         "--pilot", action="store_true", help="with --execute, run only the fixed 12-record pilot"
+    )
+    scope.add_argument(
+        "--canary",
+        action="store_true",
+        help="with --execute, run only the frozen one-record oracle canary",
     )
     parser.add_argument(
         "--retry-errors",
@@ -437,6 +575,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
+        frozen_manifest = load_json(args.manifest) if args.execute else None
         config, selected, packages, signature = prepare(
             data_dir=args.data_dir,
             splits=args.splits,
@@ -444,23 +583,35 @@ def main(argv: list[str] | None = None) -> int:
             rag_config_path=args.config,
         )
         pilot = select_pilot(packages)
+        canary = select_canary(packages)
         manifest = build_manifest(
             config=config,
             signature=signature,
             selected=selected,
             packages=packages,
             pilot=pilot,
+            canary=canary,
         )
-        write_json(args.manifest, manifest)
-        print(f"wrote offline manifest {args.manifest}")
-        print(f"planned requests: {len(packages)}; pilot: {len(pilot)}; run signature: {signature}")
+        print(
+            f"planned requests: {len(packages)}; pilot: {len(pilot)}; "
+            f"canary: 1; run signature: {signature}"
+        )
         if not args.execute:
+            write_json(args.manifest, manifest)
+            print(f"wrote offline manifest {args.manifest}")
             print("offline preparation complete; no API requests made")
             return 0
 
-        targets = pilot if args.pilot else packages
+        assert frozen_manifest is not None
+        assert_frozen_manifest(frozen_manifest, manifest)
+        print(
+            "verified frozen protocol and evidence signature before API generation: "
+            f"{manifest['evidence_freeze']['signature']}"
+        )
+        targets = (canary,) if args.canary else pilot if args.pilot else packages
         generator = OpenAIResponsesGenerator()
         records: list[GenerationRecord] = []
+        attempted_records: list[GenerationRecord] = []
         for position, package in enumerate(targets, start=1):
             path = cache_path(args.cache_dir, signature, package.package_id)
             cached = load_record(path, run_signature=signature, package_id=package.package_id)
@@ -469,21 +620,22 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 record = generate_record(generator, package, config.settings, signature)
                 save_record(path, record)
+                attempted_records.append(record)
             records.append(record)
             print(f"generation {position}/{len(targets)}: {package.package_id}", flush=True)
 
         result = {
-            "schema_version": 1,
+            "schema_version": 2,
             "run_signature": signature,
-            "scope": "pilot" if args.pilot else "full",
+            "evidence_signature": manifest["evidence_freeze"]["signature"],
+            "scope": "canary" if args.canary else "pilot" if args.pilot else "full",
             "model": config.settings.model,
             "aggregates": grouped_summaries(records),
             "outcomes": [evaluate_record(record).model_dump(mode="json") for record in records],
             "manual_semantic_review": "pending; template written outside version control",
         }
-        output = args.output.with_name(
-            f"{args.output.stem}_pilot{args.output.suffix}" if args.pilot else args.output.name
-        )
+        suffix = "_canary" if args.canary else "_pilot" if args.pilot else ""
+        output = args.output.with_name(f"{args.output.stem}{suffix}{args.output.suffix}")
         write_json(output, result)
         write_json(
             args.manual_review,
@@ -491,8 +643,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"wrote {output}")
         print(f"wrote private manual-review template {args.manual_review}")
+        if all_generation_attempts_failed(attempted_records, records):
+            print("RAG generation failed: all provider attempts failed", file=sys.stderr)
+            return 1
         return 0
-    except (KeyError, OSError, ValueError) as error:
+    except (KeyError, OSError, TypeError, ValueError) as error:
         print(f"RAG evaluation failed: {error}", file=sys.stderr)
         return 1
 

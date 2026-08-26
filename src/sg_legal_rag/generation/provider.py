@@ -3,10 +3,11 @@ from __future__ import annotations
 import json
 import time
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Any, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .evidence import EvidencePackage, prompt_evidence
 from .schema import GroundedAnswer
@@ -46,6 +47,12 @@ class TokenUsage(BaseModel):
     total_tokens: int = Field(ge=0)
 
 
+class ProviderCallStatus(StrEnum):
+    SUCCEEDED = "succeeded"
+    PROVIDER_API_FAILURE = "provider_api_failure"
+    STRUCTURED_OUTPUT_FAILURE = "structured_output_failure"
+
+
 class ProviderResult(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -59,6 +66,17 @@ class ProviderResult(BaseModel):
     raw_output: str
     answer: GroundedAnswer | None
     error: str | None
+    provider_status: ProviderCallStatus | None = None
+
+    @property
+    def call_status(self) -> ProviderCallStatus:
+        if self.provider_status is not None:
+            return self.provider_status
+        if self.error is None and self.answer is not None:
+            return ProviderCallStatus.SUCCEEDED
+        if self.response_id is None:
+            return ProviderCallStatus.PROVIDER_API_FAILURE
+        return ProviderCallStatus.STRUCTURED_OUTPUT_FAILURE
 
 
 class GenerationRecord(BaseModel):
@@ -130,9 +148,9 @@ class OpenAIResponsesGenerator:
             instructions=SYSTEM_INSTRUCTIONS,
             input=user_input,
             text_format=GroundedAnswer,
+            text={"verbosity": settings.verbosity},
             max_output_tokens=settings.max_output_tokens,
             reasoning={"effort": settings.reasoning_effort},
-            verbosity=settings.verbosity,
             store=False,
         )
         latency_ms = (time.perf_counter() - started) * 1000
@@ -150,10 +168,21 @@ class OpenAIResponsesGenerator:
             raw_output=response.output_text,
             answer=answer,
             error=error,
+            provider_status=(
+                ProviderCallStatus.SUCCEEDED
+                if answer is not None
+                else ProviderCallStatus.STRUCTURED_OUTPUT_FAILURE
+            ),
         )
 
 
-def error_result(settings: GenerationSettings, started: float, error: Exception) -> ProviderResult:
+def error_result(
+    settings: GenerationSettings,
+    started: float,
+    error: Exception,
+    *,
+    status: ProviderCallStatus,
+) -> ProviderResult:
     return ProviderResult(
         requested_model=settings.model,
         returned_model=None,
@@ -165,7 +194,14 @@ def error_result(settings: GenerationSettings, started: float, error: Exception)
         raw_output="",
         answer=None,
         error=f"{type(error).__name__}: {error}",
+        provider_status=status,
     )
+
+
+def exception_call_status(error: Exception) -> ProviderCallStatus:
+    if isinstance(error, ValidationError):
+        return ProviderCallStatus.STRUCTURED_OUTPUT_FAILURE
+    return ProviderCallStatus.PROVIDER_API_FAILURE
 
 
 def generate_record(
@@ -179,7 +215,12 @@ def generate_record(
     try:
         result = generator.generate(package, settings)
     except Exception as error:  # noqa: BLE001 - provider failures are cached outcomes.
-        result = error_result(settings, started, error)
+        result = error_result(
+            settings,
+            started,
+            error,
+            status=exception_call_status(error),
+        )
     return GenerationRecord(
         run_signature=run_signature,
         package=package,

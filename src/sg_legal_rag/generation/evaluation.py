@@ -5,11 +5,12 @@ import statistics
 import unicodedata
 from collections import Counter
 from collections.abc import Iterable
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from .evidence import EvidenceCondition, EvidencePackage
-from .provider import GenerationRecord
+from .provider import GenerationRecord, ProviderCallStatus
 from .schema import AnswerStatus, GroundedAnswer
 
 CASE_ID_RE = re.compile(r"case:[0-9]+")
@@ -38,6 +39,13 @@ class AnswerValidation(BaseModel):
     issues: tuple[ValidationIssue, ...]
 
 
+class EvaluationStatus(StrEnum):
+    ANSWERED = "answered"
+    ABSTAINED = "abstained"
+    PROVIDER_API_FAILURE = "provider_api_failure"
+    STRUCTURED_OUTPUT_FAILURE = "structured_output_failure"
+
+
 class EvaluationOutcome(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -50,6 +58,7 @@ class EvaluationOutcome(BaseModel):
     warm_start: bool
     retrieval_correct: bool
     answer_expected: bool
+    evaluation_status: EvaluationStatus
     provider_succeeded: bool
     answered: bool
     abstained: bool
@@ -171,9 +180,18 @@ def evaluate_record(record: GenerationRecord) -> EvaluationOutcome:
     package = record.package
     answer = record.result.answer
     validation = validate_answer(package, answer)
-    provider_succeeded = record.result.error is None and answer is not None
+    call_status = record.result.call_status
+    provider_succeeded = call_status is ProviderCallStatus.SUCCEEDED
     answered = answer is not None and answer.status is AnswerStatus.ANSWERED
     abstained = answer is not None and answer.status is AnswerStatus.INSUFFICIENT_EVIDENCE
+    if call_status is ProviderCallStatus.PROVIDER_API_FAILURE:
+        evaluation_status = EvaluationStatus.PROVIDER_API_FAILURE
+    elif call_status is ProviderCallStatus.STRUCTURED_OUTPUT_FAILURE:
+        evaluation_status = EvaluationStatus.STRUCTURED_OUTPUT_FAILURE
+    elif answered:
+        evaluation_status = EvaluationStatus.ANSWERED
+    else:
+        evaluation_status = EvaluationStatus.ABSTAINED
     precedent_correct = bool(
         answered and answer is not None and answer.recommended_case_id in package.accepted_case_ids
     )
@@ -191,7 +209,9 @@ def evaluate_record(record: GenerationRecord) -> EvaluationOutcome:
     inappropriate_answer = bool(insufficient and answered)
 
     retrieval_generation_layer: str | None
-    if package.retrieval_correct:
+    if not provider_succeeded:
+        retrieval_generation_layer = None
+    elif package.retrieval_correct:
         retrieval_generation_layer = (
             "1_retrieval_correct_generation_correct"
             if generation_correct
@@ -208,21 +228,26 @@ def evaluate_record(record: GenerationRecord) -> EvaluationOutcome:
         retrieval_generation_layer = None
 
     abstention_layer = None
-    if insufficient:
+    if insufficient and provider_succeeded:
         abstention_layer = (
             "5_insufficient_evidence_correct_abstention"
             if abstention_correct
-            else "6_insufficient_evidence_inappropriate_answer_or_error"
+            else "6_insufficient_evidence_inappropriate_answer"
         )
-    primary = (
-        abstention_layer
-        or retrieval_generation_layer
-        or (
-            "2_retrieval_correct_generation_incorrect"
-            if package.retrieval_correct
-            else "4_retrieval_incorrect_generation_unsupported"
+    if evaluation_status is EvaluationStatus.PROVIDER_API_FAILURE:
+        primary = "0_provider_api_failure"
+    elif evaluation_status is EvaluationStatus.STRUCTURED_OUTPUT_FAILURE:
+        primary = "0_structured_output_failure"
+    else:
+        primary = (
+            abstention_layer
+            or retrieval_generation_layer
+            or (
+                "2_retrieval_correct_generation_incorrect"
+                if package.retrieval_correct
+                else "4_retrieval_incorrect_generation_unsupported"
+            )
         )
-    )
     return EvaluationOutcome(
         package_id=package.package_id,
         query_id=package.query_id,
@@ -233,6 +258,7 @@ def evaluate_record(record: GenerationRecord) -> EvaluationOutcome:
         warm_start=package.warm_start,
         retrieval_correct=package.retrieval_correct,
         answer_expected=package.answer_expected,
+        evaluation_status=evaluation_status,
         provider_succeeded=provider_succeeded,
         answered=answered,
         abstained=abstained,
@@ -266,13 +292,14 @@ def _percentile(values: list[float], proportion: float) -> float | None:
 
 def summarize_records(records: list[GenerationRecord]) -> dict[str, object]:
     outcomes = [evaluate_record(record) for record in records]
-    expected_insufficient = [outcome for outcome in outcomes if not outcome.answer_expected]
-    predicted_abstentions = [outcome for outcome in outcomes if outcome.abstained]
+    evaluable = [outcome for outcome in outcomes if outcome.provider_succeeded]
+    expected_insufficient = [outcome for outcome in evaluable if not outcome.answer_expected]
+    predicted_abstentions = [outcome for outcome in evaluable if outcome.abstained]
     correct_abstentions = [
         outcome for outcome in expected_insufficient if outcome.abstention_correct
     ]
     retrieved = [
-        outcome for outcome in outcomes if outcome.condition is not EvidenceCondition.ORACLE
+        outcome for outcome in evaluable if outcome.condition is not EvidenceCondition.ORACLE
     ]
     latencies = [record.result.latency_ms for record in records]
     usage = [record.result.usage for record in records if record.result.usage is not None]
@@ -283,8 +310,20 @@ def summarize_records(records: list[GenerationRecord]) -> dict[str, object]:
     ]
     return {
         "records": len(records),
+        "evaluable_records": len(evaluable),
+        "evaluation_statuses": dict(
+            sorted(Counter(outcome.evaluation_status.value for outcome in outcomes).items())
+        ),
+        "provider_api_failures": sum(
+            outcome.evaluation_status is EvaluationStatus.PROVIDER_API_FAILURE
+            for outcome in outcomes
+        ),
+        "structured_output_failures": sum(
+            outcome.evaluation_status is EvaluationStatus.STRUCTURED_OUTPUT_FAILURE
+            for outcome in outcomes
+        ),
         "provider_success_rate": _mean(outcome.provider_succeeded for outcome in outcomes),
-        "answer_rate": _mean(outcome.answered for outcome in outcomes),
+        "answer_rate": _mean(outcome.answered for outcome in evaluable),
         "faithfulness_proxy": _mean(
             outcome.validation.citation_correctness for outcome in outcomes
         ),
@@ -298,10 +337,10 @@ def summarize_records(records: list[GenerationRecord]) -> dict[str, object]:
             outcome.validation.unsupported_claim_rate_proxy for outcome in outcomes
         ),
         "precedent_correctness": _mean(
-            outcome.precedent_correct for outcome in outcomes if outcome.answer_expected
+            outcome.precedent_correct for outcome in evaluable if outcome.answer_expected
         ),
         "grounded_generation_success": _mean(
-            outcome.grounded_generation_correct for outcome in outcomes if outcome.answer_expected
+            outcome.grounded_generation_correct for outcome in evaluable if outcome.answer_expected
         ),
         "grounded_end_to_end_success": _mean(
             outcome.grounded_end_to_end_success for outcome in retrieved
