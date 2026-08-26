@@ -1,0 +1,18 @@
+[corpus]
+evidence_cutoff_year = 2023
+max_passage_chars = 2000
+max_profile_passages = 3
+max_profile_identifier_chars = 300
+max_profile_context_chars = 550
+max_profile_chars = 2000
+
+[bm25]
+k1 = 1.2
+b = 0.75
+
+[dense]
+model_key = "bge_small"
+
+[evaluation]
+k_values = [1, 5, 10, 20, 50]
+score_batch_size = 64

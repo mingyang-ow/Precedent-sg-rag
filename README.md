@@ -6,7 +6,7 @@ An evaluation-first Singapore legal citation retrieval and grounded RAG project 
 The system is an engineering benchmark, not a legal-advice service. Dataset validation, retrieval
 protocols, and failure analysis are treated as first-class outputs.
 
-## Current scope: Phase 2 hybrid retrieval and reranking
+## Current scope: Phase 2.5 corpus repair
 
 - Reproducible download from an immutable Hugging Face revision.
 - Streaming schema, integrity, completeness, and extraction-quality checks.
@@ -16,6 +16,9 @@ protocols, and failure analysis are treated as first-class outputs.
 - Exact cosine retrieval with three revision-pinned English embedding models.
 - Deterministic BM25 + BGE weighted reciprocal rank fusion.
 - Revision-pinned top-50 TinyBERT cross-encoder reranking ablation.
+- Leakage-safe historical citation passages and bounded case profiles.
+- Conservative case identity, duplicate removal, and warm/cold coverage audits.
+- Restart-safe embedding and query-scoring checkpoints for long experiments.
 - Facts-only, principle-only, and facts-plus-principle ablations.
 - Recall@K, MRR, nDCG@K, latency, court, and year reporting.
 
@@ -45,6 +48,8 @@ uv run sg-legal-rerank --protocol pooled \
   --output experiments/results/reranker_pooled_hybrid_tinybert_l2.json
 uv run sg-legal-rerank --protocol full \
   --output experiments/results/reranker_full_hybrid_tinybert_l2.json
+uv run sg-legal-corpus-repair --representation passages --retriever bm25 \
+  --output experiments/results/corpus_repair_passages_bm25.json
 uv run pytest
 ```
 
@@ -61,6 +66,9 @@ The fixed-fusion hybrid experiment and its rejected-baseline analysis are in
 [docs/hybrid_baseline.md](docs/hybrid_baseline.md).
 The cross-encoder ablation, candidate-recall accounting, and latency tradeoff are in
 [docs/reranker_baseline.md](docs/reranker_baseline.md).
+The leakage-safe historical-context construction, warm/cold coverage, full repair matrix, and
+decision to proceed to bounded RAG evaluation are in
+[docs/corpus_repair.md](docs/corpus_repair.md).
 
 ## Roadmap
 
@@ -69,8 +77,10 @@ The cross-encoder ablation, candidate-recall accounting, and latency tradeoff ar
 3. Dense retrieval model comparison. ✓
 4. Hybrid retrieval and reranking baselines. ✓ Both are rejected for production on the released
    candidate strings; validation-tuned fusion remains optional.
-5. Citation-constrained generation and component-level evaluation.
-6. API, experiment tracking, and observability.
+5. Leakage-safe citation-context corpus repair. ✓ Passage BM25 materially improves retrieval;
+   cold-start limits remain explicit.
+6. Citation-constrained generation and component-level evaluation.
+7. API, experiment tracking, and observability.
 
 Dataset material is CC BY 4.0 and remains under its upstream licence. Project code is MIT
 licensed. Do not treat the project licence as relicensing the dataset or source judgments.
