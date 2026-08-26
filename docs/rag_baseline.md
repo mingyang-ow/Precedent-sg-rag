@@ -3,11 +3,16 @@
 ## Status
 
 Phase 3 is implemented and verified offline. The first 12-call pilot attempt was rejected before
-inference because the Responses API request used the obsolete top-level `verbosity` field. That
-provider-contract error is repaired, but no successful model output exists yet. The current
-decision is therefore:
+inference because the Responses API request used the obsolete top-level `verbosity` field. A later
+one-call canary proved that the repaired provider, schema, parsing, and citation-validation path
+works, but it also exposed a methodology defect: the old "oracle" supplied an unrelated historical
+passage merely because it mentioned the labelled case. The model correctly abstained while the old
+evaluator incorrectly expected an answer.
 
-> **RAG GENERATION NOT YET RELIABLE — ONE-CALL CANARY HOLD**
+The oracle and abstention methodology is now repaired offline. No API calls were made during this
+repair. The current decision is:
+
+> **METHODOLOGY REPAIRED OFFLINE — PAID INFERENCE HOLD**
 
 The hold is deliberate: paid inference requires explicit approval after reviewing the request and
 cost forecast below. This document must be updated with measured results and a manual semantic
@@ -25,8 +30,9 @@ configuration, while every cache record stores the actual `response.model` retur
 - Structured Outputs: <https://developers.openai.com/api/docs/guides/structured-outputs>
 
 This is separately billed OpenAI API usage. It does not consume a ChatGPT subscription or a Codex
-interactive allowance. The failed pilot attempt made 12 API requests, all rejected before
-inference; the provider reported no token usage and no model output.
+interactive allowance. The prior failed pilot attempt made 12 rejected API requests with no model
+output. The later separately approved canary made exactly one successful request. This repair made
+none.
 
 ## Frozen experiment
 
@@ -37,26 +43,39 @@ strata, with 16 underlying queries in every mode/stratum cell.
 | --- | --- | ---: |
 | Query mode | facts only; facts plus principle | 176 each |
 | Underlying-query stratum | warm retrieval success; warm retrieval failure; cold start | 32 each |
-| Oracle condition | one known-relevant historical context for every warm query | 64 |
-| Retrieved sufficient condition | frozen passage BM25 at case depths 1, 3, and 5 | 76 |
-| Insufficient-evidence condition | target absent from the retrieved case set | 212 |
+| Oracle condition | exact gold citation-row context for every warm-query oracle slot | 64 |
+| Retrieved condition | frozen passage BM25 at case depths 1, 3, and 5 | 288 |
+| Target present in retrieved cases | identity diagnostic only; not sufficiency ground truth | 76 |
+| Target absent from retrieved cases | identity diagnostic only; not sufficiency ground truth | 212 |
 | Total | 96 underlying queries expanded across conditions/depths | 352 |
 
 Every one of the 96 underlying queries receives retrieved evidence at case depths 1, 3, and 5.
-Every warm query also receives one oracle-context run. BM25 ranks positive lexical matches only,
-aggregates passages to cases by maximum score, and packages the best passage for each selected
-case. Arbitrary zero-score cases are never sent to generation.
+Every warm query also receives one `oracle_gold_context` run. Oracle evidence is now taken from the
+exact gold citation row attached to the sampled test query. It is an evaluation-only upper bound
+and never enters the retrieval index or deployed candidate corpus.
+
+Retrieved evidence is unchanged: citation passages from judgments dated no later than 2023 are
+ranked by passage BM25, aggregated to cases by maximum score, and represented by the best passage
+for each selected case. Arbitrary zero-score cases are never sent to generation. All 288 rebuilt
+retrieved prompt-evidence signatures exactly match the prior manifest.
 
 Facts-only is the primary product-facing diagnostic. Facts-plus-principle is retained as an
 assisted-query comparison, not as evidence available to a real user at prediction time.
 
-The committed manifest at `experiments/samples/rag_baseline.json` preserves query IDs, package IDs,
-strata, conditions, depths, the run signature, and cost forecast without redistributing prompt
-passages. It also freezes ordered passage digests, per-package model-visible evidence signatures,
-exact rendered-input signatures, and one global evidence signature. Before constructing an API
-client, the execution path reconstructs and compares the full frozen protocol and evidence lock.
+The schema-v3 manifest at `experiments/samples/rag_baseline.json` preserves query IDs, strata,
+conditions, depths, the run signature, and cost forecast without redistributing prompt passages.
+It also freezes evidence origin and gold-row provenance, expected-action labels, ordered passage
+digests, per-package model-visible evidence signatures, exact rendered-input signatures, and one
+global evidence signature. Before constructing an API client, the execution path reconstructs and
+compares the full frozen protocol and evidence lock.
 Full prompts, evidence, outputs, provider metadata, latency, token use, and estimated cost are
 cached per record under ignored `data/processed/generation/` paths.
+
+The 96 sampled query IDs and their strata are byte-for-byte unchanged from methodology v1. Of the
+352 expected actions, 290 changed: 76 retrieved `answer` labels and 212 retrieved `abstain` labels
+became `unknown_needs_review`, as did two oracle rows whose labelled citation relationship could
+not be verified in the supplied paragraph. The other 62 oracle rows are verified answer cases. The
+ignored `data/processed/rag_sufficiency_review.json` file contains the private review queue.
 
 ## Prompt and output contract
 
@@ -78,13 +97,24 @@ IDs, and unseen Singapore neutral/report citations.
 
 ## Evaluation
 
+Each package now carries three separate evaluation fields:
+
+- `target_present`: whether an accepted case identity occurs in the supplied cases;
+- `evidence_sufficient`: `true`, `false`, or unknown pending review;
+- `expected_action`: `answer`, `abstain`, or `unknown_needs_review`.
+
+Case identity never sets evidence sufficiency. Retrieved sufficiency requires manual review of
+whether the supplied passage supports a defensible answer to that query. Unknown records are not
+placed into answer/abstention correctness denominators. Provider/API and Structured Output failures
+remain separate operational statuses and can never be counted as model abstentions.
+
 Automated metrics are computed before any model-based or manual judgment:
 
 - citation correctness from valid evidence identifiers and exact passage quotes;
 - citation completeness from the required citation on each structured claim;
 - unsupported-claim proxy from invalid quotes or unseen identifiers/citations;
 - labelled-precedent correctness;
-- abstention precision, recall, and inappropriate-answer rate;
+- abstention precision, recall, and inappropriate-answer rate on reviewed records only;
 - grounded generation success;
 - grounded end-to-end success, requiring retrieval success and a valid, fully cited, labelled-correct
   recommendation;
@@ -95,17 +125,17 @@ created after inference, balanced over mode and condition. A human reviewer must
 support, citation completeness, unsupported claims, and abstention appropriateness. An LLM judge is
 not treated as ground truth.
 
-Provider/API and Structured Output failures are operational statuses and are excluded from
-abstention denominators. The model-quality failure analysis then keeps retrieval/generation and
-abstention views separate:
+The model-quality failure analysis keeps provider, retrieval identity, evidence sufficiency, and
+generation behavior separate:
 
 0. provider/API or Structured Output failure, recorded as distinct statuses;
-1. retrieval correct, generation correct;
-2. retrieval correct, generation incorrect;
-3. retrieval incorrect, answer grounded to the wrong supplied evidence;
-4. retrieval incorrect, answer unsupported;
-5. insufficient evidence, correct abstention;
-6. insufficient evidence, inappropriate model answer.
+1. target present, generation correct on reviewed-sufficient evidence;
+2. target present, generation incorrect on reviewed-sufficient evidence;
+3. target absent, answer grounded to the wrong supplied evidence;
+4. target absent, answer unsupported;
+5. reviewed-insufficient evidence, correct abstention;
+6. reviewed-insufficient evidence, inappropriate model answer;
+7. evidence sufficiency unknown and awaiting review.
 
 A record can carry layer 3 or 4 in the retrieval/generation view and layer 6 in the abstention view.
 This avoids hiding whether an inappropriate answer was at least grounded to what retrieval supplied.
@@ -119,12 +149,13 @@ cached input tokens, and $1.20 per million output tokens.
 
 | Run | Calls | Estimated input | Expected output | Configured output ceiling | Expected cost | Ceiling cost |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Small pilot | 12 | 27,549 | 2,160 | 7,200 | $0.0081 | $0.0142 |
-| Full baseline | 352 | 734,926 | 63,360 | 211,200 | $0.2230 | $0.4004 |
+| Small pilot | 12 | 27,243 | 2,160 | 7,200 | $0.0080 | $0.0141 |
+| Full baseline | 352 | 734,836 | 63,360 | 211,200 | $0.2230 | $0.4004 |
 
-The 12-call pilot contains six records per query mode: oracle warm-success, retrieved-success at
-depths 1 and 5, warm retrieval-failure at depth 5, and cold-start evidence at depths 1 and 5. It
-covers all three conditions, both query modes, warm/cold behavior, and the top-k endpoints.
+The 12-call pilot contains six records per query mode: an answer-expected oracle warm-success
+record, target-present retrieved records at depths 1 and 5, a warm retrieval-failure at depth 5,
+and cold-start evidence at depths 1 and 5. The five retrieved records per mode remain pending
+sufficiency review; target presence alone does not determine their expected action.
 
 Automatic SDK retries are disabled (`max_retries=0`), so 352 logical calls mean 352 planned HTTP
 attempts. Cache resumption makes completed records free to reuse. The command exits non-zero when
@@ -133,14 +164,14 @@ one later logical call for each failed cached record; it is never enabled by def
 
 ## Important assumptions and limitations
 
-Three assumptions must not be mistaken for ground truth:
+Three limitations must not be mistaken for ground truth:
 
-1. A known-relevant case's historical citation paragraph is only a bounded oracle proxy. It is not
-   the authoritative full text of the cited judgment and may not express every fact or holding
-   needed by the query.
-2. “Insufficient evidence” is labelled when no accepted dataset target occurs in the retrieved set.
-   SG-LegalCite labels may be incomplete, so a retrieved unlabelled case can still be relevant.
-   Manual abstention review is required.
+1. Oracle gold context is the citation passage from the test-query row, not the authoritative full
+   text of the cited judgment. Two sampled rows do not textually verify their labelled citation
+   relationship and remain `unknown_needs_review`.
+2. Target presence and absence are retrieval identity diagnostics, not answerability labels.
+   SG-LegalCite labels may be incomplete, and even the labelled case may be represented by an
+   irrelevant historical proposition. Manual sufficiency review is required for retrieved context.
 3. Exact-quote validation proves traceability, not that a claim is entailed by the quote. The manual
    semantic subset is part of the completion gate.
 
@@ -156,10 +187,10 @@ uv sync --extra dev --extra generation
 uv run sg-legal-rag-evaluate
 ```
 
-The billed path requires the explicit `--execute` flag. It must not be used until the request plan
-has been approved. `--canary` restricts that path to one frozen, answer-expected facts-only oracle
-record; `--pilot` restricts it to the fixed 12-record pilot. The failed pilot must not be retried
-until a separately approved canary succeeds and the user approves a later run.
+The billed path requires the explicit `--execute` flag. It must not be used until a new request plan
+has been approved. `--canary` restricts that path to one frozen, answer-expected facts-only
+`oracle_gold_context` record; `--pilot` restricts it to the fixed 12-record pilot. No inference is
+authorized by this repair.
 
 ## Completion gate
 

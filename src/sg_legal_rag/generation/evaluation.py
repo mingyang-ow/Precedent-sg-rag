@@ -9,7 +9,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .evidence import EvidenceCondition, EvidencePackage
+from .evidence import EvidenceCondition, EvidencePackage, ExpectedAction
 from .provider import GenerationRecord, ProviderCallStatus
 from .schema import AnswerStatus, GroundedAnswer
 
@@ -56,18 +56,19 @@ class EvaluationOutcome(BaseModel):
     stratum: str
     top_k: int | None
     warm_start: bool
-    retrieval_correct: bool
-    answer_expected: bool
+    target_present: bool
+    evidence_sufficient: bool | None
+    expected_action: ExpectedAction
     evaluation_status: EvaluationStatus
     provider_succeeded: bool
     answered: bool
     abstained: bool
     validation: AnswerValidation
-    precedent_correct: bool
-    grounded_generation_correct: bool
-    grounded_end_to_end_success: bool
-    abstention_correct: bool
-    inappropriate_answer: bool
+    precedent_correct: bool | None
+    grounded_generation_correct: bool | None
+    grounded_end_to_end_success: bool | None
+    abstention_correct: bool | None
+    inappropriate_answer: bool | None
     primary_failure_layer: str
     retrieval_generation_layer: str | None
     abstention_layer: str | None
@@ -192,43 +193,61 @@ def evaluate_record(record: GenerationRecord) -> EvaluationOutcome:
         evaluation_status = EvaluationStatus.ANSWERED
     else:
         evaluation_status = EvaluationStatus.ABSTAINED
-    precedent_correct = bool(
-        answered and answer is not None and answer.recommended_case_id in package.accepted_case_ids
+    answer_expected = package.expected_action is ExpectedAction.ANSWER
+    abstention_expected = package.expected_action is ExpectedAction.ABSTAIN
+    behaviour_known = package.expected_action is not ExpectedAction.UNKNOWN_NEEDS_REVIEW
+    precedent_correct = (
+        bool(
+            answered
+            and answer is not None
+            and answer.recommended_case_id in package.accepted_case_ids
+        )
+        if answer_expected
+        else None
     )
     fully_cited = validation.citation_correctness == 1.0
-    generation_correct = bool(
-        provider_succeeded
-        and answered
-        and precedent_correct
-        and validation.structurally_valid
-        and fully_cited
+    generation_correct = (
+        bool(
+            provider_succeeded
+            and answered
+            and precedent_correct
+            and validation.structurally_valid
+            and fully_cited
+        )
+        if answer_expected
+        else None
     )
-    end_to_end = bool(package.retrieval_correct and generation_correct)
-    insufficient = not package.answer_expected
-    abstention_correct = bool(insufficient and abstained and validation.structurally_valid)
-    inappropriate_answer = bool(insufficient and answered)
+    end_to_end = (
+        bool(package.target_present and generation_correct)
+        if generation_correct is not None
+        else None
+    )
+    abstention_correct = (
+        bool(abstained and validation.structurally_valid) if abstention_expected else None
+    )
+    inappropriate_answer = bool(answered) if abstention_expected else None
 
     retrieval_generation_layer: str | None
-    if not provider_succeeded:
+    if not provider_succeeded or not answer_expected:
         retrieval_generation_layer = None
-    elif package.retrieval_correct:
+    elif package.target_present:
         retrieval_generation_layer = (
-            "1_retrieval_correct_generation_correct"
+            "1_target_present_generation_correct"
             if generation_correct
-            else "2_retrieval_correct_generation_incorrect"
+            else "2_target_present_generation_incorrect"
         )
     elif answered:
         grounded_to_supplied = validation.structurally_valid and fully_cited
         retrieval_generation_layer = (
-            "3_retrieval_incorrect_generation_grounded_to_wrong_evidence"
+            "3_target_absent_generation_grounded_to_supplied_evidence"
             if grounded_to_supplied
-            else "4_retrieval_incorrect_generation_unsupported"
+            else "4_target_absent_generation_unsupported"
         )
     else:
         retrieval_generation_layer = None
 
     abstention_layer = None
-    if insufficient and provider_succeeded:
+    if abstention_expected and provider_succeeded:
         abstention_layer = (
             "5_insufficient_evidence_correct_abstention"
             if abstention_correct
@@ -238,14 +257,16 @@ def evaluate_record(record: GenerationRecord) -> EvaluationOutcome:
         primary = "0_provider_api_failure"
     elif evaluation_status is EvaluationStatus.STRUCTURED_OUTPUT_FAILURE:
         primary = "0_structured_output_failure"
+    elif not behaviour_known:
+        primary = "7_evidence_sufficiency_unknown_needs_review"
     else:
         primary = (
             abstention_layer
             or retrieval_generation_layer
             or (
-                "2_retrieval_correct_generation_incorrect"
-                if package.retrieval_correct
-                else "4_retrieval_incorrect_generation_unsupported"
+                "2_target_present_generation_incorrect"
+                if package.target_present
+                else "4_target_absent_generation_unsupported"
             )
         )
     return EvaluationOutcome(
@@ -256,8 +277,9 @@ def evaluate_record(record: GenerationRecord) -> EvaluationOutcome:
         stratum=package.stratum,
         top_k=package.top_k,
         warm_start=package.warm_start,
-        retrieval_correct=package.retrieval_correct,
-        answer_expected=package.answer_expected,
+        target_present=package.target_present,
+        evidence_sufficient=package.evidence_sufficient,
+        expected_action=package.expected_action,
         evaluation_status=evaluation_status,
         provider_succeeded=provider_succeeded,
         answered=answered,
@@ -293,13 +315,23 @@ def _percentile(values: list[float], proportion: float) -> float | None:
 def summarize_records(records: list[GenerationRecord]) -> dict[str, object]:
     outcomes = [evaluate_record(record) for record in records]
     evaluable = [outcome for outcome in outcomes if outcome.provider_succeeded]
-    expected_insufficient = [outcome for outcome in evaluable if not outcome.answer_expected]
-    predicted_abstentions = [outcome for outcome in evaluable if outcome.abstained]
+    expected_answers = [
+        outcome for outcome in evaluable if outcome.expected_action is ExpectedAction.ANSWER
+    ]
+    expected_insufficient = [
+        outcome for outcome in evaluable if outcome.expected_action is ExpectedAction.ABSTAIN
+    ]
+    behaviour_known = [
+        outcome
+        for outcome in evaluable
+        if outcome.expected_action is not ExpectedAction.UNKNOWN_NEEDS_REVIEW
+    ]
+    predicted_abstentions = [outcome for outcome in behaviour_known if outcome.abstained]
     correct_abstentions = [
         outcome for outcome in expected_insufficient if outcome.abstention_correct
     ]
     retrieved = [
-        outcome for outcome in evaluable if outcome.condition is not EvidenceCondition.ORACLE
+        outcome for outcome in expected_answers if outcome.condition is EvidenceCondition.RETRIEVED
     ]
     latencies = [record.result.latency_ms for record in records]
     usage = [record.result.usage for record in records if record.result.usage is not None]
@@ -311,6 +343,13 @@ def summarize_records(records: list[GenerationRecord]) -> dict[str, object]:
     return {
         "records": len(records),
         "evaluable_records": len(evaluable),
+        "expected_actions": dict(
+            sorted(Counter(outcome.expected_action.value for outcome in outcomes).items())
+        ),
+        "manual_sufficiency_review_records": sum(
+            outcome.expected_action is ExpectedAction.UNKNOWN_NEEDS_REVIEW for outcome in outcomes
+        ),
+        "target_present_records": sum(outcome.target_present for outcome in outcomes),
         "evaluation_statuses": dict(
             sorted(Counter(outcome.evaluation_status.value for outcome in outcomes).items())
         ),
@@ -336,11 +375,9 @@ def summarize_records(records: list[GenerationRecord]) -> dict[str, object]:
         "unsupported_claim_rate_proxy": _mean(
             outcome.validation.unsupported_claim_rate_proxy for outcome in outcomes
         ),
-        "precedent_correctness": _mean(
-            outcome.precedent_correct for outcome in evaluable if outcome.answer_expected
-        ),
+        "precedent_correctness": _mean(outcome.precedent_correct for outcome in expected_answers),
         "grounded_generation_success": _mean(
-            outcome.grounded_generation_correct for outcome in evaluable if outcome.answer_expected
+            outcome.grounded_generation_correct for outcome in expected_answers
         ),
         "grounded_end_to_end_success": _mean(
             outcome.grounded_end_to_end_success for outcome in retrieved

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import os
 import subprocess
@@ -17,10 +18,12 @@ from sg_legal_rag.generation.benchmark import (
     RAGConfig,
     all_generation_attempts_failed,
     assert_frozen_manifest,
+    audit_packages,
     build_manifest,
     evidence_freeze,
     select_canary,
     select_pilot,
+    sufficiency_review_template,
 )
 from sg_legal_rag.generation.evaluation import (
     EvaluationStatus,
@@ -30,7 +33,10 @@ from sg_legal_rag.generation.evaluation import (
 )
 from sg_legal_rag.generation.evidence import (
     EvidenceCondition,
+    EvidenceOrigin,
     EvidencePackage,
+    EvidenceSufficiencyBasis,
+    ExpectedAction,
     package_oracle_evidence,
     package_retrieved_evidence,
     prompt_evidence,
@@ -58,7 +64,7 @@ from sg_legal_rag.generation.sampling import (
     select_queries,
 )
 from sg_legal_rag.generation.schema import AnswerStatus, GroundedAnswer, GroundedClaim
-from sg_legal_rag.retrieval.benchmark import QueryRecord
+from sg_legal_rag.retrieval.benchmark import GoldCitationContext, QueryRecord
 from sg_legal_rag.retrieval.bm25 import BM25Index
 from sg_legal_rag.retrieval.corpus_repair import CorpusRepairDataset, HistoricalContext
 
@@ -75,6 +81,33 @@ def context(case_key: str, raw_case: str, reference: str, text: str, digest: str
         identifier_matched=True,
         digest=digest,
     )
+
+
+def gold_query(
+    *,
+    text: str,
+    case_key: str,
+    raw_case: str,
+    row_id: str,
+    principle: str = "test principle",
+    combined: bool = False,
+) -> QueryRecord:
+    fact = text.removesuffix(f" {principle}") if combined else text
+    paragraph = f"The test judgment applies {raw_case} to {principle}."
+    gold = GoldCitationContext(
+        row_id=row_id,
+        case_key=case_key,
+        raw_case=raw_case,
+        source_url=f"https://test.example/{row_id}",
+        source_reference="[2024] SGHC 1",
+        source_year=2024,
+        fact_query=fact,
+        principle=principle,
+        paragraph=paragraph,
+        paragraph_digest=hashlib.sha256(paragraph.encode()).hexdigest(),
+        identifier_matched=True,
+    )
+    return QueryRecord(text, {case_key}, gold_contexts={row_id: gold})
 
 
 @pytest.fixture
@@ -100,15 +133,51 @@ def corpus() -> CorpusRepairDataset:
     )
     queries = {
         "facts_only": [
-            QueryRecord("objective contract interpretation", {alpha.casefold()}),
-            QueryRecord("objective contract unmatched terminology", {beta.casefold()}),
-            QueryRecord("objective cold-start duty", {cold.casefold()}),
+            gold_query(
+                text="objective contract interpretation",
+                case_key=alpha.casefold(),
+                raw_case=alpha,
+                row_id="facts-alpha",
+            ),
+            gold_query(
+                text="objective contract unmatched terminology",
+                case_key=beta.casefold(),
+                raw_case=beta,
+                row_id="facts-beta",
+            ),
+            gold_query(
+                text="objective cold-start duty",
+                case_key=cold.casefold(),
+                raw_case=cold,
+                row_id="facts-cold",
+            ),
         ],
         "principle_only": [],
         "facts_principle": [
-            QueryRecord("contract facts objective interpretation", {alpha.casefold()}),
-            QueryRecord("contract absent principle", {beta.casefold()}),
-            QueryRecord("sentencing new cold principle", {cold.casefold()}),
+            gold_query(
+                text="contract facts objective interpretation",
+                case_key=alpha.casefold(),
+                raw_case=alpha,
+                row_id="combined-alpha",
+                principle="objective interpretation",
+                combined=True,
+            ),
+            gold_query(
+                text="contract absent principle",
+                case_key=beta.casefold(),
+                raw_case=beta,
+                row_id="combined-beta",
+                principle="principle",
+                combined=True,
+            ),
+            gold_query(
+                text="sentencing new cold principle",
+                case_key=cold.casefold(),
+                raw_case=cold,
+                row_id="combined-cold",
+                principle="principle",
+                combined=True,
+            ),
         ],
     }
     return CorpusRepairDataset(
@@ -120,7 +189,17 @@ def corpus() -> CorpusRepairDataset:
         historical_case_ids=frozenset({0, 1}),
         queries_by_mode=queries,
         audit={},
-        test_urls=frozenset(),
+        test_urls=frozenset(
+            {
+                "https://test.example/facts-alpha",
+                "https://test.example/facts-beta",
+                "https://test.example/facts-cold",
+                "https://test.example/combined-alpha",
+                "https://test.example/combined-beta",
+                "https://test.example/combined-cold",
+            }
+        ),
+        max_passage_chars=200,
     )
 
 
@@ -167,6 +246,20 @@ def retrieved_package(
         dataset=corpus,
         case_to_id=case_to_id,
     )
+
+
+def reviewed_package(package: EvidencePackage, *, sufficient: bool) -> EvidencePackage:
+    payload = package.model_dump(mode="python")
+    payload.update(
+        evidence_sufficient=sufficient,
+        expected_action=ExpectedAction.ANSWER if sufficient else ExpectedAction.ABSTAIN,
+        sufficiency_basis=(
+            EvidenceSufficiencyBasis.MANUAL_REVIEWED_SUFFICIENT
+            if sufficient
+            else EvidenceSufficiencyBasis.MANUAL_REVIEWED_INSUFFICIENT
+        ),
+    )
+    return EvidencePackage.model_validate(payload)
 
 
 def answer_for(package: EvidencePackage, *, recommendation: str | None = None) -> GroundedAnswer:
@@ -234,7 +327,7 @@ def test_retrieval_packages_best_positive_passage_per_case(
     assert evidence[0].passage_digest == "alpha-digest"
 
 
-def test_oracle_context_uses_known_relevant_historical_evidence(
+def test_oracle_context_uses_exact_gold_query_row_not_historical_evidence(
     corpus: CorpusRepairDataset, case_to_id: dict[str, int]
 ) -> None:
     package = package_oracle_evidence(
@@ -245,23 +338,49 @@ def test_oracle_context_uses_known_relevant_historical_evidence(
         case_to_id=case_to_id,
     )
 
-    assert package.condition is EvidenceCondition.ORACLE
+    assert package.condition is EvidenceCondition.ORACLE_GOLD
     assert package.top_k is None
     assert package.evidence[0].case_id == "case:0"
-    assert package.retrieval_correct
+    assert package.evidence[0].origin is EvidenceOrigin.GOLD_QUERY_ROW
+    assert package.evidence[0].gold_row_id == "facts-alpha"
+    assert package.evidence[0].source_year == 2024
+    assert (
+        package.evidence[0].passage_digest
+        == hashlib.sha256(package.evidence[0].passage.encode("utf-8")).hexdigest()
+    )
+    assert package.target_present
+    assert package.evidence_sufficient is True
+    assert package.expected_action is ExpectedAction.ANSWER
 
 
-def test_oracle_context_rejects_cold_query(
+def test_oracle_gold_context_is_available_for_cold_query(
     corpus: CorpusRepairDataset, case_to_id: dict[str, int]
 ) -> None:
-    with pytest.raises(ValueError, match="warm relevant case"):
-        package_oracle_evidence(
-            mode="facts_only",
-            query=corpus.queries_by_mode["facts_only"][2],
-            stratum=COLD,
-            dataset=corpus,
-            case_to_id=case_to_id,
-        )
+    package = package_oracle_evidence(
+        mode="facts_only",
+        query=corpus.queries_by_mode["facts_only"][2],
+        stratum=COLD,
+        dataset=corpus,
+        case_to_id=case_to_id,
+    )
+
+    assert package.condition is EvidenceCondition.ORACLE_GOLD
+    assert package.evidence[0].case_id == "case:2"
+    assert package.evidence[0].gold_row_id == "facts-cold"
+    assert not package.warm_start
+    assert package.expected_action is ExpectedAction.ANSWER
+
+
+def test_gold_or_future_evidence_never_enters_retrieved_context(
+    corpus: CorpusRepairDataset, index: BM25Index
+) -> None:
+    evidence = retrieve_passages(index, corpus, "objective contract", top_k=5)
+
+    assert evidence
+    assert all(item.origin is EvidenceOrigin.HISTORICAL_RETRIEVAL for item in evidence)
+    assert all(item.gold_row_id is None for item in evidence)
+    assert all(item.source_year <= 2023 for item in evidence)
+    assert all(item.source_url not in corpus.test_urls for item in evidence)
 
 
 def test_prompt_does_not_leak_evaluation_labels(
@@ -272,7 +391,9 @@ def test_prompt_does_not_leak_evaluation_labels(
 
     assert "case:2" not in rendered
     assert "accepted_case_ids" not in rendered
-    assert "retrieval_correct" not in rendered
+    assert "target_present" not in rendered
+    assert "evidence_sufficient" not in rendered
+    assert "expected_action" not in rendered
     assert prompt_evidence(package)[0]["case_id"] in rendered
 
 
@@ -325,6 +446,10 @@ def test_package_matrix_and_fixed_pilot_cover_all_conditions(
     assert {item.condition for item in pilot} == set(EvidenceCondition)
     assert {item.top_k for item in pilot} == {None, 1, 5}
     assert {item.warm_start for item in pilot} == {True, False}
+    assert {item.expected_action for item in pilot} == {
+        ExpectedAction.ANSWER,
+        ExpectedAction.UNKNOWN_NEEDS_REVIEW,
+    }
 
 
 def test_bm25_scores_are_identical_across_python_hash_seeds() -> None:
@@ -428,6 +553,11 @@ def test_manifest_freezes_evidence_and_rejects_reconstruction_drift(
     )
     pilot = select_pilot(packages)
     canary = select_canary(packages)
+    methodology_audit = audit_packages(
+        packages,
+        evidence_cutoff_year=2023,
+        test_urls=corpus.test_urls,
+    )
     manifest = build_manifest(
         config=config,
         signature="test-signature",
@@ -435,8 +565,20 @@ def test_manifest_freezes_evidence_and_rejects_reconstruction_drift(
         packages=packages,
         pilot=pilot,
         canary=canary,
+        methodology_audit=methodology_audit,
+    )
+    rebuilt_manifest = build_manifest(
+        config=config,
+        signature="test-signature",
+        selected=selected,
+        packages=packages,
+        pilot=pilot,
+        canary=canary,
+        methodology_audit=methodology_audit,
     )
 
+    assert manifest["schema_version"] == 3
+    assert manifest == rebuilt_manifest
     assert manifest["evidence_freeze"]["signature"]
     assert len(manifest["evidence_freeze"]["packages"]) == len(packages)
     assert all(lock["evidence_digests"] for lock in manifest["evidence_freeze"]["packages"])
@@ -446,6 +588,13 @@ def test_manifest_freezes_evidence_and_rejects_reconstruction_drift(
     drifted["evidence_freeze"]["packages"][0]["evidence_digests"][0]["passage_digest"] = "changed"
     with pytest.raises(ValueError, match="frozen evidence signature mismatch"):
         assert_frozen_manifest(manifest, drifted)
+
+    assert methodology_audit["oracle_exact_gold_row_origin_verified"] == 4
+    assert methodology_audit["retrieved_historical_corpus_verified"] == 18
+    assert methodology_audit["retrieved_gold_or_future_leakage_records"] == 0
+    review = sufficiency_review_template(packages)
+    assert len(review["records"]) == 18
+    assert all(record["review"]["expected_action"] is None for record in review["records"])
 
 
 def test_output_schema_rejects_invalid_status_contract_and_extra_fields() -> None:
@@ -498,13 +647,13 @@ def test_deterministic_citation_validation_accepts_exact_quote_and_rejects_hallu
     assert invalid.unsupported_claim_rate_proxy == 1
 
 
-def test_correct_abstention_and_inappropriate_answer_have_separate_failure_layers(
+def test_target_presence_and_evidence_sufficiency_are_separate_for_abstention(
     corpus: CorpusRepairDataset,
     index: BM25Index,
     case_to_id: dict[str, int],
     settings: GenerationSettings,
 ) -> None:
-    package = retrieved_package(corpus, index, case_to_id, 1)
+    package = reviewed_package(retrieved_package(corpus, index, case_to_id, 0), sufficient=False)
     abstention = GroundedAnswer(
         status="insufficient_evidence",
         recommended_case_id=None,
@@ -514,13 +663,37 @@ def test_correct_abstention_and_inappropriate_answer_have_separate_failure_layer
     correct = evaluate_record(record_for(package, abstention, settings))
     improper = evaluate_record(record_for(package, answer_for(package), settings))
 
+    assert package.target_present
+    assert package.evidence_sufficient is False
+    assert package.expected_action is ExpectedAction.ABSTAIN
     assert correct.primary_failure_layer == "5_insufficient_evidence_correct_abstention"
     assert correct.abstention_correct
-    assert improper.retrieval_generation_layer == (
-        "3_retrieval_incorrect_generation_grounded_to_wrong_evidence"
-    )
+    assert improper.retrieval_generation_layer is None
     assert improper.abstention_layer == "6_insufficient_evidence_inappropriate_answer"
     assert improper.inappropriate_answer
+
+
+def test_unreviewed_retrieved_evidence_does_not_score_abstention_from_case_presence(
+    corpus: CorpusRepairDataset,
+    index: BM25Index,
+    case_to_id: dict[str, int],
+    settings: GenerationSettings,
+) -> None:
+    package = retrieved_package(corpus, index, case_to_id, 0)
+    abstention = GroundedAnswer(
+        status="insufficient_evidence",
+        recommended_case_id=None,
+        explanation="The supplied evidence does not support a precedent recommendation.",
+        claims=[],
+    )
+    outcome = evaluate_record(record_for(package, abstention, settings))
+
+    assert package.target_present
+    assert package.evidence_sufficient is None
+    assert package.expected_action is ExpectedAction.UNKNOWN_NEEDS_REVIEW
+    assert outcome.primary_failure_layer == "7_evidence_sufficiency_unknown_needs_review"
+    assert outcome.abstention_correct is None
+    assert outcome.inappropriate_answer is None
 
 
 def test_provider_failure_is_not_scored_as_an_abstention_failure(
@@ -544,8 +717,8 @@ def test_provider_failure_is_not_scored_as_an_abstention_failure(
     assert outcome.evaluation_status is EvaluationStatus.PROVIDER_API_FAILURE
     assert outcome.primary_failure_layer == "0_provider_api_failure"
     assert outcome.abstention_layer is None
-    assert not outcome.abstention_correct
-    assert not outcome.inappropriate_answer
+    assert outcome.abstention_correct is None
+    assert outcome.inappropriate_answer is None
     assert summary["provider_api_failures"] == 1
     assert summary["structured_output_failures"] == 0
     assert summary["abstention_recall"] is None
@@ -613,19 +786,21 @@ def test_generation_command_failure_requires_at_least_one_usable_result(
     assert not all_generation_attempts_failed([], [failed, succeeded])
 
 
-def test_retrieval_correct_wrong_precedent_is_generation_layer_two(
+def test_manually_sufficient_target_present_wrong_precedent_is_generation_layer_two(
     corpus: CorpusRepairDataset,
     index: BM25Index,
     case_to_id: dict[str, int],
     settings: GenerationSettings,
 ) -> None:
-    package = retrieved_package(corpus, index, case_to_id, 0, top_k=2)
+    package = reviewed_package(
+        retrieved_package(corpus, index, case_to_id, 0, top_k=2), sufficient=True
+    )
     wrong = answer_for(package, recommendation="case:1")
     outcome = evaluate_record(record_for(package, wrong, settings))
 
-    assert package.retrieval_correct
+    assert package.target_present
     assert not outcome.precedent_correct
-    assert outcome.retrieval_generation_layer == "2_retrieval_correct_generation_incorrect"
+    assert outcome.retrieval_generation_layer == "2_target_present_generation_incorrect"
 
 
 def test_cache_round_trip_and_identity_checks(

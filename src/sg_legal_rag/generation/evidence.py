@@ -2,20 +2,36 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections import defaultdict
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from sg_legal_rag.retrieval.benchmark import QueryRecord
 from sg_legal_rag.retrieval.bm25 import BM25Index
-from sg_legal_rag.retrieval.corpus_repair import CorpusRepairDataset
+from sg_legal_rag.retrieval.corpus_repair import CorpusRepairDataset, extract_context_window
 
 
 class EvidenceCondition(StrEnum):
-    ORACLE = "oracle_context"
+    ORACLE_GOLD = "oracle_gold_context"
     RETRIEVED = "retrieved_context"
-    INSUFFICIENT = "insufficient_evidence"
+
+
+class EvidenceOrigin(StrEnum):
+    GOLD_QUERY_ROW = "gold_query_row"
+    HISTORICAL_RETRIEVAL = "historical_retrieval"
+
+
+class ExpectedAction(StrEnum):
+    ANSWER = "answer"
+    ABSTAIN = "abstain"
+    UNKNOWN_NEEDS_REVIEW = "unknown_needs_review"
+
+
+class EvidenceSufficiencyBasis(StrEnum):
+    GOLD_CITATION_RELATIONSHIP = "gold_query_row_citation_relationship"
+    MANUAL_REVIEW_REQUIRED = "manual_review_required"
+    MANUAL_REVIEWED_SUFFICIENT = "manual_reviewed_sufficient"
+    MANUAL_REVIEWED_INSUFFICIENT = "manual_reviewed_insufficient"
 
 
 class EvidenceItem(BaseModel):
@@ -31,6 +47,20 @@ class EvidenceItem(BaseModel):
     passage_digest: str
     retrieval_rank: int | None
     retrieval_score: float | None
+    origin: EvidenceOrigin
+    gold_row_id: str | None
+    citation_relationship_verified: bool
+
+    @model_validator(mode="after")
+    def validate_origin(self) -> EvidenceItem:
+        if self.origin is EvidenceOrigin.GOLD_QUERY_ROW:
+            if self.gold_row_id is None:
+                raise ValueError("gold evidence requires a gold row ID")
+            if self.retrieval_rank is not None or self.retrieval_score is not None:
+                raise ValueError("gold evidence cannot carry retrieval rank or score")
+        elif self.gold_row_id is not None:
+            raise ValueError("historical retrieval evidence cannot carry a gold row ID")
+        return self
 
 
 class EvidencePackage(BaseModel):
@@ -48,11 +78,56 @@ class EvidencePackage(BaseModel):
     evidence: tuple[EvidenceItem, ...]
     accepted_case_ids: tuple[str, ...]
     warm_start: bool
-    retrieval_correct: bool
+    target_present: bool
+    evidence_sufficient: bool | None
+    expected_action: ExpectedAction
+    sufficiency_basis: EvidenceSufficiencyBasis
+
+    @model_validator(mode="after")
+    def validate_methodology(self) -> EvidencePackage:
+        supplied = {item.case_id for item in self.evidence}
+        actual_target_present = bool(supplied & set(self.accepted_case_ids))
+        if self.target_present != actual_target_present:
+            raise ValueError("target_present must reflect supplied evidence case identity")
+        expected_by_sufficiency = {
+            True: ExpectedAction.ANSWER,
+            False: ExpectedAction.ABSTAIN,
+            None: ExpectedAction.UNKNOWN_NEEDS_REVIEW,
+        }
+        if self.expected_action is not expected_by_sufficiency[self.evidence_sufficient]:
+            raise ValueError("expected_action must reflect evidence_sufficient")
+        expected_basis = {
+            True: {
+                EvidenceSufficiencyBasis.GOLD_CITATION_RELATIONSHIP,
+                EvidenceSufficiencyBasis.MANUAL_REVIEWED_SUFFICIENT,
+            },
+            False: {EvidenceSufficiencyBasis.MANUAL_REVIEWED_INSUFFICIENT},
+            None: {EvidenceSufficiencyBasis.MANUAL_REVIEW_REQUIRED},
+        }
+        if self.sufficiency_basis not in expected_basis[self.evidence_sufficient]:
+            raise ValueError("sufficiency_basis must reflect evidence_sufficient")
+        if self.condition is EvidenceCondition.ORACLE_GOLD:
+            if self.top_k is not None:
+                raise ValueError("oracle gold evidence cannot have top_k")
+            if any(item.origin is not EvidenceOrigin.GOLD_QUERY_ROW for item in self.evidence):
+                raise ValueError("oracle evidence must originate from a gold query row")
+        else:
+            if self.top_k is None:
+                raise ValueError("retrieved evidence requires top_k")
+            if any(
+                item.origin is not EvidenceOrigin.HISTORICAL_RETRIEVAL for item in self.evidence
+            ):
+                raise ValueError("gold query-row evidence cannot enter retrieved context")
+            if self.evidence_sufficient is not None and self.sufficiency_basis not in {
+                EvidenceSufficiencyBasis.MANUAL_REVIEWED_SUFFICIENT,
+                EvidenceSufficiencyBasis.MANUAL_REVIEWED_INSUFFICIENT,
+            }:
+                raise ValueError("retrieved evidence sufficiency requires manual review")
+        return self
 
     @property
     def answer_expected(self) -> bool:
-        return self.condition is not EvidenceCondition.INSUFFICIENT
+        return self.expected_action is ExpectedAction.ANSWER
 
 
 def case_label(case_id: int) -> str:
@@ -96,6 +171,9 @@ def _item(
         passage_digest=context.digest,
         retrieval_rank=rank,
         retrieval_score=score,
+        origin=EvidenceOrigin.HISTORICAL_RETRIEVAL,
+        gold_row_id=None,
+        citation_relationship_verified=context.identifier_matched,
     )
 
 
@@ -150,31 +228,26 @@ def package_retrieved_evidence(
     evidence = retrieve_passages(index, dataset, query.text, top_k=top_k)
     accepted = tuple(case_label(value) for value in relevant_case_ids(query, case_to_id))
     supplied = {item.case_id for item in evidence}
-    retrieval_correct = bool(supplied & set(accepted))
-    condition = EvidenceCondition.RETRIEVED if retrieval_correct else EvidenceCondition.INSUFFICIENT
+    target_present = bool(supplied & set(accepted))
     warm_start = any(
         value in dataset.historical_case_ids for value in relevant_case_ids(query, case_to_id)
     )
     return EvidencePackage(
-        package_id=_package_id(identifier, condition, top_k),
+        package_id=_package_id(identifier, EvidenceCondition.RETRIEVED, top_k),
         query_id=identifier,
         query_mode=mode,
         query_text=query.text,
         stratum=stratum,
-        condition=condition,
+        condition=EvidenceCondition.RETRIEVED,
         top_k=top_k,
         evidence=evidence,
         accepted_case_ids=accepted,
         warm_start=warm_start,
-        retrieval_correct=retrieval_correct,
+        target_present=target_present,
+        evidence_sufficient=None,
+        expected_action=ExpectedAction.UNKNOWN_NEEDS_REVIEW,
+        sufficiency_basis=EvidenceSufficiencyBasis.MANUAL_REVIEW_REQUIRED,
     )
-
-
-def _contexts_by_case(dataset: CorpusRepairDataset) -> dict[int, list[int]]:
-    grouped: dict[int, list[int]] = defaultdict(list)
-    for passage_id, numeric_case_id in enumerate(dataset.context_case_ids):
-        grouped[int(numeric_case_id)].append(passage_id)
-    return grouped
 
 
 def package_oracle_evidence(
@@ -187,24 +260,69 @@ def package_oracle_evidence(
 ) -> EvidencePackage:
     identifier = query_id(mode, query)
     relevant = relevant_case_ids(query, case_to_id)
-    grouped = _contexts_by_case(dataset)
-    oracle_case = next((case_id for case_id in relevant if grouped.get(case_id)), None)
-    if oracle_case is None:
-        raise ValueError("oracle evidence requires at least one warm relevant case")
-    passage_id = grouped[oracle_case][0]
+    contexts = sorted(
+        query.gold_contexts.values(),
+        key=lambda item: (
+            not item.identifier_matched,
+            not bool(item.paragraph),
+            item.case_key,
+            item.row_id,
+        ),
+    )
+    if not contexts:
+        raise ValueError("oracle evidence requires a gold test-query row")
+    context = contexts[0]
+    if context.case_key not in query.relevant_texts:
+        raise ValueError("gold row cited case is not a labelled query target")
+    if mode == "facts_only" and context.fact_query != query.text:
+        raise ValueError("facts-only oracle row does not match the query")
+    if mode == "facts_principle" and f"{context.fact_query} {context.principle}" != query.text:
+        raise ValueError("facts-plus-principle oracle row does not match the query")
+    passage, window_matched = (
+        extract_context_window(context.paragraph, context.raw_case, dataset.max_passage_chars)
+        if context.paragraph
+        else ("", False)
+    )
+    numeric_case_id = case_to_id[context.case_key]
+    relationship_verified = bool(context.identifier_matched and window_matched)
+    evidence = EvidenceItem(
+        evidence_id="E1",
+        case_id=case_label(numeric_case_id),
+        case_name=dataset.case_texts[numeric_case_id],
+        source_judgment=context.source_reference,
+        source_url=context.source_url,
+        source_year=context.source_year,
+        passage=passage,
+        passage_digest=hashlib.sha256(passage.encode("utf-8")).hexdigest(),
+        retrieval_rank=None,
+        retrieval_score=None,
+        origin=EvidenceOrigin.GOLD_QUERY_ROW,
+        gold_row_id=context.row_id,
+        citation_relationship_verified=relationship_verified,
+    )
     accepted = tuple(case_label(value) for value in relevant)
+    evidence_sufficient = True if relationship_verified else None
     return EvidencePackage(
-        package_id=_package_id(identifier, EvidenceCondition.ORACLE, None),
+        package_id=_package_id(identifier, EvidenceCondition.ORACLE_GOLD, None),
         query_id=identifier,
         query_mode=mode,
         query_text=query.text,
         stratum=stratum,
-        condition=EvidenceCondition.ORACLE,
+        condition=EvidenceCondition.ORACLE_GOLD,
         top_k=None,
-        evidence=(_item(dataset, passage_id, 1, rank=None, score=None),),
+        evidence=(evidence,),
         accepted_case_ids=accepted,
-        warm_start=True,
-        retrieval_correct=True,
+        warm_start=any(value in dataset.historical_case_ids for value in relevant),
+        target_present=True,
+        evidence_sufficient=evidence_sufficient,
+        expected_action=(
+            ExpectedAction.ANSWER if evidence_sufficient else ExpectedAction.UNKNOWN_NEEDS_REVIEW
+        ),
+        sufficiency_basis=(
+            EvidenceSufficiencyBasis.GOLD_CITATION_RELATIONSHIP
+            if evidence_sufficient
+            else EvidenceSufficiencyBasis.MANUAL_REVIEW_REQUIRED
+        ),
     )
 
 

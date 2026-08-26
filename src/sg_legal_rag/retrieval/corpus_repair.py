@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import json
 import sys
 import unicodedata
 from collections import defaultdict
@@ -14,7 +15,7 @@ import numpy as np
 from sg_legal_rag.ingestion.splits import normalize_case_family
 from sg_legal_rag.ingestion.validation import EXPECTED_FIELDS, REQUIRED_TEXT_FIELDS
 
-from .benchmark import QueryRecord, add_query, load_test_urls, percentile
+from .benchmark import GoldCitationContext, QueryRecord, add_query, load_test_urls, percentile
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,7 @@ class CorpusRepairDataset:
     queries_by_mode: dict[str, list[QueryRecord]]
     audit: dict[str, Any]
     test_urls: frozenset[str]
+    max_passage_chars: int
 
 
 def normalize_space(text: str) -> str:
@@ -74,6 +76,39 @@ def extract_context_window(paragraph: str, cited_case: str, max_chars: int) -> t
 
 def context_digest(text: str) -> str:
     return hashlib.sha256(normalize_space(text).encode("utf-8")).hexdigest()
+
+
+def gold_context_from_row(row: dict[str, str], case_key: str) -> GoldCitationContext:
+    raw_case = row["Cited Case"].strip()
+    paragraph = normalize_space(row["Paragraph"])
+    fact = row["Fact_Query"].strip()
+    principle = row["Key Principles Illustrated"].strip()
+    paragraph_digest = context_digest(paragraph)
+    identity = json.dumps(
+        [
+            row["Judgment_URL"].strip(),
+            row["Judgment_Reference"].strip(),
+            raw_case,
+            fact,
+            principle,
+            paragraph_digest,
+        ],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return GoldCitationContext(
+        row_id=hashlib.sha256(identity.encode("utf-8")).hexdigest(),
+        case_key=case_key,
+        raw_case=raw_case,
+        source_url=row["Judgment_URL"].strip(),
+        source_reference=row["Judgment_Reference"].strip(),
+        source_year=int(row["Year"].strip()),
+        fact_query=fact,
+        principle=principle,
+        paragraph=paragraph,
+        paragraph_digest=paragraph_digest,
+        identifier_matched=bool(raw_case and raw_case.casefold() in paragraph.casefold()),
+    )
 
 
 def build_case_profile(
@@ -201,6 +236,9 @@ def load_corpus_repair_dataset(
     duplicate_contexts = 0
     matched_identifiers = 0
     paragraph_lengths: list[int] = []
+    gold_row_ids: set[str] = set()
+    gold_rows_with_paragraph = 0
+    gold_rows_identifier_matched = 0
 
     csv.field_size_limit(sys.maxsize)
     with csv_path.open("r", encoding="latin-1", newline="") as stream:
@@ -258,7 +296,20 @@ def load_corpus_repair_dataset(
             principle = row["Key Principles Illustrated"].strip()
             court = row["Court_Type"].strip()
             query_year = row["Year"].strip()
-            add_query(builders["facts_only"], fact, fact, case_key, court, query_year)
+            gold_context = gold_context_from_row(row, case_key)
+            if gold_context.row_id not in gold_row_ids:
+                gold_row_ids.add(gold_context.row_id)
+                gold_rows_with_paragraph += int(bool(gold_context.paragraph))
+                gold_rows_identifier_matched += int(gold_context.identifier_matched)
+            add_query(
+                builders["facts_only"],
+                fact,
+                fact,
+                case_key,
+                court,
+                query_year,
+                gold_context,
+            )
             add_query(
                 builders["principle_only"],
                 principle,
@@ -266,6 +317,7 @@ def load_corpus_repair_dataset(
                 case_key,
                 court,
                 query_year,
+                gold_context,
             )
             add_query(
                 builders["facts_principle"],
@@ -274,6 +326,7 @@ def load_corpus_repair_dataset(
                 case_key,
                 court,
                 query_year,
+                gold_context,
             )
 
     case_keys = tuple(sorted(aliases))
@@ -314,6 +367,9 @@ def load_corpus_repair_dataset(
         "historical_cases": len(historical_case_ids),
         "identifier_matched_contexts": matched_identifiers,
         "identifier_matched_context_percent": 100.0 * matched_identifiers / len(ordered_contexts),
+        "gold_test_rows": len(gold_row_ids),
+        "gold_test_rows_with_paragraph": gold_rows_with_paragraph,
+        "gold_test_rows_identifier_matched": gold_rows_identifier_matched,
         "paragraph_character_lengths": {
             "p50": percentile(paragraph_lengths, 0.50),
             "p95": percentile(paragraph_lengths, 0.95),
@@ -346,6 +402,7 @@ def load_corpus_repair_dataset(
         queries_by_mode=queries_by_mode,
         audit=audit,
         test_urls=frozenset(test_urls),
+        max_passage_chars=max_passage_chars,
     )
 
 

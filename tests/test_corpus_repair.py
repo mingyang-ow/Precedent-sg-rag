@@ -107,6 +107,39 @@ def test_historical_context_excludes_test_judgment_and_future_year(tmp_path: Pat
     assert dataset.contexts[0].source_year == 2023
     assert dataset.contexts[0].source_url == "historical-url"
     assert "Leaked" not in dataset.profiles[0]
+    gold_rows = dataset.queries_by_mode["facts_only"][0].gold_contexts.values()
+    gold = next(iter(gold_rows))
+    assert gold.source_url == "test-url"
+    assert gold.source_year == 2024
+    assert "Leaked 2024 discussion" in gold.paragraph
+    assert gold.case_key in dataset.queries_by_mode["facts_only"][0].relevant_texts
+
+
+def test_gold_context_preserves_exact_test_row_provenance(tmp_path: Path) -> None:
+    test_paragraph = (
+        "The test court applied Alpha v Beta [2020] SGCA 2 to the exact contract dispute."
+    )
+    dataset = load_fixture(
+        tmp_path,
+        [
+            row(),
+            row(
+                Judgment_URL="test-url",
+                Judgment_Reference="[2024] SGCA 3",
+                Year="2024",
+                Paragraph=test_paragraph,
+            ),
+        ],
+    )
+    query = dataset.queries_by_mode["facts_only"][0]
+    gold = next(iter(query.gold_contexts.values()))
+
+    assert gold.fact_query == query.text
+    assert gold.paragraph == test_paragraph
+    assert gold.raw_case == "Alpha v Beta [2020] SGCA 2"
+    assert gold.identifier_matched
+    assert gold.source_reference == "[2024] SGCA 3"
+    assert all(context.source_url != gold.source_url for context in dataset.contexts)
 
 
 def test_duplicate_historical_context_is_removed(tmp_path: Path) -> None:

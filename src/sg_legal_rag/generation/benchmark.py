@@ -21,7 +21,13 @@ from sg_legal_rag.retrieval.corpus_repair_benchmark import (
 )
 
 from .evaluation import evaluate_record, grouped_summaries
-from .evidence import EvidenceCondition, EvidencePackage, prompt_evidence
+from .evidence import (
+    EvidenceCondition,
+    EvidenceOrigin,
+    EvidencePackage,
+    ExpectedAction,
+    prompt_evidence,
+)
 from .provider import (
     SYSTEM_INSTRUCTIONS,
     GenerationRecord,
@@ -43,6 +49,7 @@ DEFAULT_MANIFEST = PROJECT_ROOT / "experiments" / "samples" / "rag_baseline.json
 DEFAULT_OUTPUT = PROJECT_ROOT / "experiments" / "results" / "rag_baseline.json"
 DEFAULT_CACHE = PROJECT_ROOT / "data" / "processed" / "generation"
 DEFAULT_MANUAL_REVIEW = PROJECT_ROOT / "data" / "processed" / "rag_manual_review.json"
+DEFAULT_SUFFICIENCY_REVIEW = PROJECT_ROOT / "data" / "processed" / "rag_sufficiency_review.json"
 TOKEN_OVERHEAD_PER_REQUEST = 40
 
 
@@ -128,11 +135,18 @@ def package_evidence_lock(package: EvidencePackage) -> dict[str, Any]:
         "query_id": package.query_id,
         "condition": package.condition.value,
         "top_k": package.top_k,
+        "target_present": package.target_present,
+        "evidence_sufficient": package.evidence_sufficient,
+        "expected_action": package.expected_action.value,
+        "sufficiency_basis": package.sufficiency_basis.value,
         "evidence_digests": [
             {
                 "evidence_id": item.evidence_id,
                 "case_id": item.case_id,
                 "passage_digest": item.passage_digest,
+                "origin": item.origin.value,
+                "gold_row_id": item.gold_row_id,
+                "citation_relationship_verified": item.citation_relationship_verified,
             }
             for item in package.evidence
         ],
@@ -144,7 +158,7 @@ def package_evidence_lock(package: EvidencePackage) -> dict[str, Any]:
 def evidence_freeze(packages: tuple[EvidencePackage, ...]) -> dict[str, Any]:
     locks = [package_evidence_lock(package) for package in packages]
     return {
-        "algorithm": "sha256-canonical-json-v1",
+        "algorithm": "sha256-canonical-json-v2",
         "signature": _canonical_digest(locks),
         "packages": locks,
     }
@@ -167,7 +181,7 @@ def _config_signature_payload(config: RAGConfig) -> dict[str, Any]:
 def _signature(config: RAGConfig, packages: tuple[EvidencePackage, ...]) -> str:
     frozen_evidence = evidence_freeze(packages)
     payload = {
-        "cache_schema": 2,
+        "cache_schema": 3,
         "config": _config_signature_payload(config),
         "evidence_signature": frozen_evidence["signature"],
     }
@@ -240,19 +254,34 @@ def select_pilot(packages: tuple[EvidencePackage, ...]) -> tuple[EvidencePackage
     for mode in modes:
         mode_packages = [package for package in packages if package.query_mode == mode]
         predicates = (
-            lambda p: p.condition is EvidenceCondition.ORACLE and p.stratum == WARM_SUCCESS,
-            lambda p: p.condition is EvidenceCondition.RETRIEVED and p.top_k == 1,
-            lambda p: p.condition is EvidenceCondition.RETRIEVED and p.top_k == 5,
             lambda p: (
-                p.condition is EvidenceCondition.INSUFFICIENT
+                p.condition is EvidenceCondition.ORACLE_GOLD
+                and p.stratum == WARM_SUCCESS
+                and p.expected_action is ExpectedAction.ANSWER
+            ),
+            lambda p: (
+                p.condition is EvidenceCondition.RETRIEVED and p.target_present and p.top_k == 1
+            ),
+            lambda p: (
+                p.condition is EvidenceCondition.RETRIEVED and p.target_present and p.top_k == 5
+            ),
+            lambda p: (
+                p.condition is EvidenceCondition.RETRIEVED
+                and not p.target_present
                 and p.stratum == WARM_FAILURE
                 and p.top_k == 5
             ),
             lambda p: (
-                p.condition is EvidenceCondition.INSUFFICIENT and p.stratum == COLD and p.top_k == 1
+                p.condition is EvidenceCondition.RETRIEVED
+                and not p.target_present
+                and p.stratum == COLD
+                and p.top_k == 1
             ),
             lambda p: (
-                p.condition is EvidenceCondition.INSUFFICIENT and p.stratum == COLD and p.top_k == 5
+                p.condition is EvidenceCondition.RETRIEVED
+                and not p.target_present
+                and p.stratum == COLD
+                and p.top_k == 5
             ),
         )
         for predicate in predicates:
@@ -275,7 +304,7 @@ def select_canary(packages: tuple[EvidencePackage, ...]) -> EvidencePackage:
         (
             package
             for package in packages
-            if package.condition is EvidenceCondition.ORACLE
+            if package.condition is EvidenceCondition.ORACLE_GOLD
             and package.query_mode == "facts_only"
             and package.answer_expected
         ),
@@ -301,6 +330,82 @@ def _counts(packages: tuple[EvidencePackage, ...]) -> dict[str, Any]:
         "warm_cold": dict(
             sorted(Counter("warm" if item.warm_start else "cold" for item in packages).items())
         ),
+        "target_present": dict(
+            sorted(Counter(str(item.target_present).lower() for item in packages).items())
+        ),
+        "evidence_sufficient": dict(
+            sorted(
+                Counter(
+                    "unknown"
+                    if item.evidence_sufficient is None
+                    else str(item.evidence_sufficient).lower()
+                    for item in packages
+                ).items()
+            )
+        ),
+        "expected_actions": dict(
+            sorted(Counter(item.expected_action.value for item in packages).items())
+        ),
+    }
+
+
+def audit_packages(
+    packages: tuple[EvidencePackage, ...],
+    *,
+    evidence_cutoff_year: int,
+    test_urls: frozenset[str],
+) -> dict[str, Any]:
+    oracle = [package for package in packages if package.condition is EvidenceCondition.ORACLE_GOLD]
+    retrieved = [
+        package for package in packages if package.condition is EvidenceCondition.RETRIEVED
+    ]
+    oracle_origin_errors = [
+        package.package_id
+        for package in oracle
+        if any(item.origin is not EvidenceOrigin.GOLD_QUERY_ROW for item in package.evidence)
+        or any(item.source_url not in test_urls for item in package.evidence)
+    ]
+    retrieved_leakage = [
+        package.package_id
+        for package in retrieved
+        if any(
+            item.origin is not EvidenceOrigin.HISTORICAL_RETRIEVAL
+            or item.source_url in test_urls
+            or item.source_year > evidence_cutoff_year
+            for item in package.evidence
+        )
+    ]
+    if oracle_origin_errors:
+        raise ValueError("oracle packages contain evidence outside exact gold test rows")
+    if retrieved_leakage:
+        raise ValueError("gold or future evidence entered retrieved-context packages")
+    unverified_oracle = [
+        package.package_id
+        for package in oracle
+        if not all(item.citation_relationship_verified for item in package.evidence)
+    ]
+    review_required = [
+        package.package_id
+        for package in packages
+        if package.expected_action is ExpectedAction.UNKNOWN_NEEDS_REVIEW
+    ]
+    return {
+        "records": len(packages),
+        "oracle_gold_records": len(oracle),
+        "retrieved_records": len(retrieved),
+        "oracle_exact_gold_row_origin_verified": len(oracle) - len(oracle_origin_errors),
+        "oracle_citation_relationship_verified": len(oracle) - len(unverified_oracle),
+        "oracle_citation_relationship_needs_review": len(unverified_oracle),
+        "oracle_needs_review_package_ids": unverified_oracle,
+        "retrieved_historical_corpus_verified": len(retrieved) - len(retrieved_leakage),
+        "retrieved_gold_or_future_leakage_records": len(retrieved_leakage),
+        "target_present_records": sum(package.target_present for package in packages),
+        "target_absent_records": sum(not package.target_present for package in packages),
+        "expected_action_counts": dict(
+            sorted(Counter(package.expected_action.value for package in packages).items())
+        ),
+        "manual_sufficiency_review_records": len(review_required),
+        "manual_sufficiency_review_package_ids": review_required,
     }
 
 
@@ -312,12 +417,23 @@ def build_manifest(
     packages: tuple[EvidencePackage, ...],
     pilot: tuple[EvidencePackage, ...],
     canary: EvidencePackage,
+    methodology_audit: dict[str, Any],
 ) -> dict[str, Any]:
     frozen_evidence = evidence_freeze(packages)
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "run_signature": signature,
-        "protocol": "bounded_grounded_rag",
+        "protocol": "bounded_grounded_rag_methodology_v2",
+        "methodology_correction": {
+            "trigger": "one-call canary exposed case-presence/evidence-sufficiency conflation",
+            "oracle_definition": "exact gold citation row from the test query",
+            "oracle_label": EvidenceCondition.ORACLE_GOLD.value,
+            "retrieved_definition": (
+                "unchanged <=2023 historical citation passages -> passage BM25 -> case aggregation"
+            ),
+            "retrieved_sufficiency_policy": "unknown_needs_review; never inferred from case identity",
+        },
+        "methodology_audit": methodology_audit,
         "model": config.settings.model,
         "model_revision_policy": "record response.model for every completed request",
         "provider": "OpenAI Responses API",
@@ -373,7 +489,7 @@ def build_manifest(
         },
         "canary": {
             "logical_requests": 1,
-            "selection_policy": "facts-only answer-expected oracle with lowest package ID",
+            "selection_policy": "facts-only answer-expected oracle-gold with lowest package ID",
             "package_id": canary.package_id,
             "evidence_signature": package_evidence_lock(canary)["evidence_signature"],
         },
@@ -408,6 +524,8 @@ def assert_frozen_manifest(frozen: dict[str, Any], rebuilt: dict[str, Any]) -> N
         "generation_plan",
         "pilot",
         "canary",
+        "methodology_correction",
+        "methodology_audit",
     )
     changed = [key for key in required_keys if frozen.get(key) != rebuilt.get(key)]
     if changed:
@@ -487,6 +605,45 @@ def manual_review_template(
     }
 
 
+def sufficiency_review_template(packages: tuple[EvidencePackage, ...]) -> dict[str, Any]:
+    review = sorted(
+        (
+            package
+            for package in packages
+            if package.expected_action is ExpectedAction.UNKNOWN_NEEDS_REVIEW
+        ),
+        key=lambda package: package.package_id,
+    )
+    return {
+        "schema_version": 1,
+        "instructions": (
+            "Decide only whether the supplied evidence supports a defensible precedent answer to "
+            "the query. Case identity alone is not sufficient. Set evidence_sufficient and "
+            "expected_action to answer or abstain; use notes for ambiguity."
+        ),
+        "records": [
+            {
+                "package_id": package.package_id,
+                "query_id": package.query_id,
+                "mode": package.query_mode,
+                "condition": package.condition.value,
+                "stratum": package.stratum,
+                "top_k": package.top_k,
+                "target_present": package.target_present,
+                "query": package.query_text,
+                "accepted_case_ids": list(package.accepted_case_ids),
+                "evidence": [item.model_dump(mode="json") for item in package.evidence],
+                "review": {
+                    "evidence_sufficient": None,
+                    "expected_action": None,
+                    "notes": "",
+                },
+            }
+            for package in review
+        ],
+    }
+
+
 def all_generation_attempts_failed(
     attempted_records: list[GenerationRecord], records: list[GenerationRecord]
 ) -> bool:
@@ -500,7 +657,13 @@ def all_generation_attempts_failed(
 
 def prepare(
     *, data_dir: Path, splits: Path, corpus_config_path: Path, rag_config_path: Path
-) -> tuple[RAGConfig, tuple[Any, ...], tuple[EvidencePackage, ...], str]:
+) -> tuple[
+    RAGConfig,
+    tuple[Any, ...],
+    tuple[EvidencePackage, ...],
+    str,
+    dict[str, Any],
+]:
     corpus_config = load_corpus_config(corpus_config_path)
     rag_config = load_config(rag_config_path)
     dataset = load_corpus_repair_dataset(
@@ -535,7 +698,18 @@ def prepare(
         dataset=dataset,
         case_to_id=case_to_id,
     )
-    return rag_config, selected, packages, _signature(rag_config, packages)
+    methodology_audit = audit_packages(
+        packages,
+        evidence_cutoff_year=corpus_config.evidence_cutoff_year,
+        test_urls=dataset.test_urls,
+    )
+    return (
+        rag_config,
+        selected,
+        packages,
+        _signature(rag_config, packages),
+        methodology_audit,
+    )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -550,6 +724,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE)
     parser.add_argument("--manual-review", type=Path, default=DEFAULT_MANUAL_REVIEW)
+    parser.add_argument("--sufficiency-review", type=Path, default=DEFAULT_SUFFICIENCY_REVIEW)
     parser.add_argument(
         "--execute",
         action="store_true",
@@ -576,7 +751,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         frozen_manifest = load_json(args.manifest) if args.execute else None
-        config, selected, packages, signature = prepare(
+        config, selected, packages, signature, methodology_audit = prepare(
             data_dir=args.data_dir,
             splits=args.splits,
             corpus_config_path=args.corpus_config,
@@ -591,6 +766,7 @@ def main(argv: list[str] | None = None) -> int:
             packages=packages,
             pilot=pilot,
             canary=canary,
+            methodology_audit=methodology_audit,
         )
         print(
             f"planned requests: {len(packages)}; pilot: {len(pilot)}; "
@@ -598,7 +774,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         if not args.execute:
             write_json(args.manifest, manifest)
+            write_json(args.sufficiency_review, sufficiency_review_template(packages))
             print(f"wrote offline manifest {args.manifest}")
+            print(f"wrote private sufficiency-review queue {args.sufficiency_review}")
             print("offline preparation complete; no API requests made")
             return 0
 
