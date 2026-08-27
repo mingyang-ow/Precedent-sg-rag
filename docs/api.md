@@ -8,6 +8,7 @@ The service exposes the production citation contract through a deliberately smal
 | --- | --- | --- |
 | `GET` | `/health` | Process liveness only |
 | `GET` | `/ready` | Local retrieval and generation-configuration readiness |
+| `GET` | `/metrics` | Prometheus-compatible operational metrics; internal/private in production |
 | `GET` | `/version` | API, prompt, schema, and citation-contract identity |
 | `POST` | `/retrieve` | Passage-BM25 evidence retrieval |
 | `POST` | `/answer` | Retrieval, generation, citation validation, and source resolution |
@@ -27,6 +28,7 @@ Then inspect:
 ```text
 http://127.0.0.1:8000/health
 http://127.0.0.1:8000/ready
+http://127.0.0.1:8000/metrics
 http://127.0.0.1:8000/docs
 ```
 
@@ -108,10 +110,11 @@ The service accepts a safe `X-Request-ID` containing up to 64 ASCII letters, dig
 underscores, or hyphens. Otherwise it generates a UUID. Every HTTP response returns the ID in the
 same header, and structured error bodies include it.
 
-JSON application logs contain request ID, endpoint, method, HTTP status, total latency, retrieval
+JSON application logs contain request ID, route-template endpoint, method, HTTP status, total latency, retrieval
 count, answer status, provider status, and retrieval/generation/resolution timings where relevant.
 They deliberately omit full query and evidence text, API keys, and credential values. A formal
-metrics backend is deferred to the observability phase.
+metrics backend can scrape the privacy-safe `/metrics` endpoint described in
+[`observability.md`](observability.md). Request IDs remain log-only and never become metric labels.
 
 ## Bounded technical debt
 

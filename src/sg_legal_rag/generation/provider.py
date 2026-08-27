@@ -10,6 +10,7 @@ from typing import Any, Protocol
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from .evidence import EvidencePackage, prompt_evidence
+from .pricing import ProviderPricing, estimated_usage_cost
 from .schema import GroundedAnswer
 
 SYSTEM_INSTRUCTIONS = """You are a bounded Singapore precedent-selection evaluator.
@@ -113,7 +114,7 @@ def render_user_input(package: EvidencePackage) -> str:
     return json.dumps(visible, ensure_ascii=False, indent=2)
 
 
-def _usage(response: Any) -> TokenUsage | None:
+def token_usage_from_response(response: Any) -> TokenUsage | None:
     usage = response.usage
     if usage is None:
         return None
@@ -131,12 +132,15 @@ def _usage(response: Any) -> TokenUsage | None:
 def estimated_cost(usage: TokenUsage | None, settings: GenerationSettings) -> float | None:
     if usage is None:
         return None
-    uncached = max(0, usage.input_tokens - usage.cached_input_tokens)
-    return (
-        uncached * settings.input_usd_per_million
-        + usage.cached_input_tokens * settings.cached_input_usd_per_million
-        + usage.output_tokens * settings.output_usd_per_million
-    ) / 1_000_000
+    return estimated_usage_cost(
+        usage,
+        ProviderPricing(
+            snapshot_date="configured",
+            input_usd_per_million=settings.input_usd_per_million,
+            cached_input_usd_per_million=settings.cached_input_usd_per_million,
+            output_usd_per_million=settings.output_usd_per_million,
+        ),
+    )
 
 
 class OpenAIResponsesGenerator:
@@ -161,7 +165,7 @@ class OpenAIResponsesGenerator:
             store=False,
         )
         latency_ms = (time.perf_counter() - started) * 1000
-        usage = _usage(response)
+        usage = token_usage_from_response(response)
         answer = response.output_parsed
         error = None if answer is not None else "response did not contain a parsed answer"
         return ProviderResult(

@@ -5,18 +5,22 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import Any
 
 import httpx
 import pytest
+from prometheus_client.parser import text_string_to_metric_families
 from pydantic import SecretStr
 
 from sg_legal_rag.api.app import create_app
 from sg_legal_rag.api.provider import (
     MalformedGeneratedOutput,
+    OpenAIProductionProvider,
     ProductionGenerationResult,
     ProviderExecutionError,
 )
+from sg_legal_rag.api.retrieval import RetrievalUnavailable
 from sg_legal_rag.api.service import RAGApplicationService
 from sg_legal_rag.api.settings import ApiSettings
 from sg_legal_rag.generation.evidence import EvidenceItem, EvidenceOrigin, EvidencePackage
@@ -25,6 +29,7 @@ from sg_legal_rag.generation.production_contract import (
     ProductionAnswer,
     ProductionClaim,
 )
+from sg_legal_rag.generation.provider import TokenUsage
 from sg_legal_rag.generation.schema import AnswerStatus
 
 
@@ -78,6 +83,8 @@ class FakeRetriever:
         return self.ready
 
     def retrieve(self, query_text: str, *, top_k: int) -> tuple[EvidenceItem, ...]:
+        if not self.ready:
+            raise RetrievalUnavailable("synthetic retrieval failure")
         self.calls.append((query_text, top_k))
         return self.evidence[:top_k]
 
@@ -86,6 +93,8 @@ class FakeRetriever:
 class FakeProvider:
     behavior: str = "answer"
     calls: list[EvidencePackage] = field(default_factory=list)
+    provider_name: str = field(default="fake", init=False)
+    model_family: str = field(default="fake", init=False)
 
     def generate(self, package: EvidencePackage) -> ProductionGenerationResult:
         self.calls.append(package)
@@ -93,6 +102,8 @@ class FakeProvider:
             raise ProviderExecutionError("synthetic upstream failure")
         if self.behavior == "malformed":
             raise MalformedGeneratedOutput("synthetic malformed output")
+        if self.behavior == "unexpected":
+            raise RuntimeError("sk-private-upstream-exception")
         if self.behavior == "abstain":
             answer = ProductionAnswer(
                 contract_version=PRODUCTION_CITATION_CONTRACT_VERSION,
@@ -119,6 +130,14 @@ class FakeProvider:
             answer=answer,
             provider_status="fake_succeeded",
             latency_ms=0.1,
+            usage=TokenUsage(
+                input_tokens=100,
+                cached_input_tokens=20,
+                output_tokens=30,
+                reasoning_tokens=5,
+                total_tokens=130,
+            ),
+            estimated_cost_usd=0.00005,
         )
 
 
@@ -192,6 +211,16 @@ class OfflineASGIClient:
         return self.request("POST", path, **kwargs)
 
 
+def metric_value(text: str, name: str, **labels: str) -> float:
+    for family in text_string_to_metric_families(text):
+        for sample in family.samples:
+            if sample.name == name and all(
+                sample.labels.get(key) == value for key, value in labels.items()
+            ):
+                return sample.value
+    raise AssertionError(f"metric sample not found: {name} {labels}")
+
+
 def test_health_is_cheap_and_returns_200() -> None:
     client, retriever, _ = client_for()
 
@@ -201,6 +230,63 @@ def test_health_is_cheap_and_returns_200() -> None:
     assert response.json() == {"status": "ok"}
     assert retriever.calls == []
     assert response.headers["X-Request-ID"]
+
+
+def test_metrics_endpoint_is_passive_prometheus_output_without_sensitive_labels() -> None:
+    provider = FakeProvider()
+    client, retriever, _ = client_for(provider=provider)
+
+    response = client.get("/metrics", headers={"X-Request-ID": "private-request-id"})
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain; version=")
+    assert retriever.calls == []
+    assert provider.calls == []
+    assert "precedent_http_requests_total" in response.text
+    assert "precedent_retrieval_ready 1.0" in response.text
+    for prohibited in (
+        "request_id=",
+        "query=",
+        "evidence_id=",
+        "package_id=",
+        "case_name=",
+        "private-request-id",
+    ):
+        assert prohibited not in response.text
+
+
+def test_http_metrics_use_route_templates_and_isolated_registries() -> None:
+    first, _, _ = client_for()
+    second, _, _ = client_for()
+
+    assert first.get("/health").status_code == 200
+    assert first.get("/not-a-real-private-path").status_code == 404
+    first_metrics = first.get("/metrics").text
+    second_metrics = second.get("/metrics").text
+
+    assert (
+        metric_value(
+            first_metrics,
+            "precedent_http_requests_total",
+            method="GET",
+            endpoint="/health",
+            status_class="2xx",
+        )
+        == 1
+    )
+    assert (
+        metric_value(
+            first_metrics,
+            "precedent_http_requests_total",
+            method="GET",
+            endpoint="unmatched",
+            status_class="4xx",
+        )
+        == 1
+    )
+    assert "/not-a-real-private-path" not in first_metrics
+    assert 'endpoint="/health"' not in second_metrics
+    assert metric_value(second_metrics, "precedent_requests_in_flight") == 1
 
 
 def test_readiness_is_partial_without_generation_and_makes_no_provider_call() -> None:
@@ -265,6 +351,15 @@ def test_retrieve_rejects_top_k_outside_configured_bounds(top_k: int) -> None:
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "bad_request"
     assert retriever.calls == []
+    metrics = client.get("/metrics").text
+    assert (
+        metric_value(
+            metrics,
+            "precedent_failures_total",
+            category="request_validation_failure",
+        )
+        == 1
+    )
 
 
 def test_request_schema_rejects_blank_facts_and_unknown_fields() -> None:
@@ -276,6 +371,15 @@ def test_request_schema_rejects_blank_facts_and_unknown_fields() -> None:
     assert blank.status_code == 422
     assert unknown.status_code == 422
     assert blank.json()["error"]["code"] == "request_validation_failed"
+    metrics = client.get("/metrics").text
+    assert (
+        metric_value(
+            metrics,
+            "precedent_failures_total",
+            category="request_validation_failure",
+        )
+        == 2
+    )
 
 
 def test_answer_returns_application_controlled_citation() -> None:
@@ -308,6 +412,71 @@ def test_answer_can_return_citation_free_abstention() -> None:
     assert response.json()["claims"] == []
 
 
+def test_rag_answer_usage_cost_and_phase_metrics_update_offline() -> None:
+    provider = FakeProvider()
+    client, _, _ = client_for(provider=provider)
+
+    assert client.post("/retrieve", json={"facts": "private facts"}).status_code == 200
+    assert client.post("/answer", json={"facts": "private facts"}).status_code == 200
+    provider.behavior = "abstain"
+    assert client.post("/answer", json={"facts": "private facts"}).status_code == 200
+    metrics = client.get("/metrics").text
+
+    assert (
+        metric_value(
+            metrics,
+            "precedent_rag_operations_total",
+            operation="retrieve",
+            outcome="success",
+        )
+        == 1
+    )
+    assert (
+        metric_value(
+            metrics,
+            "precedent_rag_operations_total",
+            operation="answer",
+            outcome="success",
+        )
+        == 2
+    )
+    assert (
+        metric_value(
+            metrics,
+            "precedent_answer_outcomes_total",
+            status="answered",
+        )
+        == 1
+    )
+    assert (
+        metric_value(
+            metrics,
+            "precedent_answer_outcomes_total",
+            status="insufficient_evidence",
+        )
+        == 1
+    )
+    assert metric_value(metrics, "precedent_retrieval_duration_seconds_count") == 3
+    assert metric_value(metrics, "precedent_generation_duration_seconds_count") == 2
+    assert metric_value(metrics, "precedent_resolution_duration_seconds_count") == 2
+    assert metric_value(metrics, "precedent_retrieval_results_count") == 3
+    provider_labels = {"provider": "fake", "model_family": "fake"}
+    assert metric_value(metrics, "precedent_provider_requests_total", **provider_labels) == 2
+    assert (
+        metric_value(metrics, "precedent_provider_duration_seconds_count", **provider_labels) == 2
+    )
+    assert metric_value(metrics, "precedent_llm_input_tokens_total", **provider_labels) == 200
+    assert metric_value(metrics, "precedent_llm_cached_input_tokens_total", **provider_labels) == 40
+    assert metric_value(metrics, "precedent_llm_output_tokens_total", **provider_labels) == 60
+    assert metric_value(metrics, "precedent_llm_reasoning_tokens_total", **provider_labels) == 10
+    assert metric_value(
+        metrics,
+        "precedent_llm_estimated_cost_usd_total",
+        **provider_labels,
+    ) == pytest.approx(0.0001)
+    assert "private facts" not in metrics
+
+
 def test_answer_without_generation_configuration_returns_503_before_retrieval() -> None:
     client, retriever, _ = client_for(provider=None)
 
@@ -316,6 +485,15 @@ def test_answer_without_generation_configuration_returns_503_before_retrieval() 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "generation_unavailable"
     assert retriever.calls == []
+    metrics = client.get("/metrics").text
+    assert (
+        metric_value(
+            metrics,
+            "precedent_failures_total",
+            category="generation_unavailable",
+        )
+        == 1
+    )
 
 
 @pytest.mark.parametrize(
@@ -326,6 +504,7 @@ def test_answer_without_generation_configuration_returns_503_before_retrieval() 
         ("no_claims", "invalid_generated_citation"),
         ("failure", "provider_failure"),
         ("malformed", "malformed_generated_output"),
+        ("unexpected", "provider_failure"),
     ],
 )
 def test_answer_maps_generated_and_provider_failures(behavior: str, expected_code: str) -> None:
@@ -336,6 +515,55 @@ def test_answer_maps_generated_and_provider_failures(behavior: str, expected_cod
     assert response.status_code == 502
     assert response.json()["error"]["code"] == expected_code
     assert response.json()["error"]["request_id"] == response.headers["X-Request-ID"]
+    metrics = client.get("/metrics").text
+    category = (
+        behavior
+        if behavior in {"failure", "malformed", "unexpected"}
+        else "citation_contract_failure"
+    )
+    category = {
+        "failure": "provider_failure",
+        "malformed": "malformed_generated_output",
+        "unexpected": "provider_failure",
+    }.get(category, category)
+    assert metric_value(metrics, "precedent_failures_total", category=category) == 1
+    if behavior in {"failure", "malformed", "unexpected"}:
+        assert (
+            metric_value(
+                metrics,
+                "precedent_provider_failures_total",
+                provider="fake",
+                model_family="fake",
+                category=category,
+            )
+            == 1
+        )
+    else:
+        issue_code = {
+            "invalid_evidence": "unknown_evidence_id",
+            "case_mismatch": "case_evidence_mismatch",
+            "no_claims": "answer_without_supporting_evidence",
+        }[behavior]
+        assert (
+            metric_value(
+                metrics,
+                "precedent_citation_contract_violations_total",
+                issue_code=issue_code,
+            )
+            == 1
+        )
+
+
+def test_provider_exception_payload_is_not_logged(caplog: pytest.LogCaptureFixture) -> None:
+    client, _, _ = client_for(provider=FakeProvider(behavior="unexpected"))
+
+    with caplog.at_level("INFO", logger="sg_legal_rag.api"):
+        response = client.post("/answer", json={"facts": "private facts"})
+
+    assert response.status_code == 502
+    rendered = "\n".join(record.getMessage() for record in caplog.records)
+    assert "sk-private-upstream-exception" not in rendered
+    assert "private facts" not in rendered
 
 
 def test_changed_evidence_digest_fails_as_internal_integrity_error() -> None:
@@ -350,6 +578,50 @@ def test_changed_evidence_digest_fails_as_internal_integrity_error() -> None:
     assert response.status_code == 500
     assert response.json()["error"]["code"] == "evidence_integrity_failure"
     assert response.json()["error"]["issues"] == ["evidence_digest_mismatch"]
+    metrics = client.get("/metrics").text
+    assert (
+        metric_value(
+            metrics,
+            "precedent_failures_total",
+            category="evidence_integrity_failure",
+        )
+        == 1
+    )
+    assert (
+        metric_value(
+            metrics,
+            "precedent_citation_contract_violations_total",
+            issue_code="evidence_digest_mismatch",
+        )
+        == 1
+    )
+
+
+def test_retrieval_unavailable_is_observable_without_exposing_failure_text() -> None:
+    client, _, _ = client_for(retriever=FakeRetriever(ready=False))
+
+    response = client.post("/retrieve", json={"facts": "sensitive unavailable query"})
+    metrics = client.get("/metrics").text
+
+    assert response.status_code == 503
+    assert (
+        metric_value(
+            metrics,
+            "precedent_failures_total",
+            category="retrieval_unavailable",
+        )
+        == 1
+    )
+    assert (
+        metric_value(
+            metrics,
+            "precedent_rag_operations_total",
+            operation="retrieve",
+            outcome="failure",
+        )
+        == 1
+    )
+    assert "sensitive unavailable query" not in metrics
 
 
 def test_request_id_is_preserved_when_safe_and_replaced_when_invalid() -> None:
@@ -402,13 +674,80 @@ def test_health_and_readiness_do_not_construct_openai_client(
     assert client.get("/ready").status_code in {200, 503}
 
 
+def test_openai_adapter_records_reported_usage_and_frozen_cost_without_network(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import openai
+
+    calls: list[dict[str, Any]] = []
+
+    class FakeResponses:
+        def parse(self, **kwargs: Any) -> Any:
+            calls.append(kwargs)
+            return SimpleNamespace(
+                output_parsed=_answered(),
+                usage=SimpleNamespace(
+                    input_tokens=100,
+                    input_tokens_details=SimpleNamespace(cached_tokens=20),
+                    output_tokens=30,
+                    output_tokens_details=SimpleNamespace(reasoning_tokens=5),
+                    total_tokens=130,
+                ),
+            )
+
+    class FakeOpenAI:
+        def __init__(self, **kwargs: Any) -> None:
+            assert kwargs["api_key"] == "sk-offline-test"
+            self.responses = FakeResponses()
+
+    monkeypatch.setattr(openai, "OpenAI", FakeOpenAI)
+    configured = ApiSettings(
+        model_id="gpt-5.6-luna",
+        top_k_default=2,
+        max_top_k=3,
+        openai_api_key=SecretStr("sk-offline-test"),
+    )
+    provider = OpenAIProductionProvider(
+        api_key=configured.openai_api_key,
+        model_id=configured.model_id,
+        max_output_tokens=configured.max_output_tokens,
+        reasoning_effort=configured.reasoning_effort,
+        verbosity=configured.verbosity,
+    )
+    service = RAGApplicationService(
+        settings=configured,
+        retriever=FakeRetriever(),
+        provider=provider,
+    )
+    client = OfflineASGIClient(create_app(settings=configured, service=service))
+
+    response = client.post("/answer", json={"facts": "offline provider telemetry"})
+    metrics = client.get("/metrics").text
+    labels = {"provider": "openai", "model_family": "gpt-5.6-luna"}
+
+    assert response.status_code == 200
+    assert len(calls) == 1
+    assert metric_value(metrics, "precedent_provider_requests_total", **labels) == 1
+    assert metric_value(metrics, "precedent_llm_input_tokens_total", **labels) == 100
+    assert metric_value(metrics, "precedent_llm_cached_input_tokens_total", **labels) == 20
+    assert metric_value(metrics, "precedent_llm_output_tokens_total", **labels) == 30
+    assert metric_value(metrics, "precedent_llm_reasoning_tokens_total", **labels) == 5
+    assert metric_value(
+        metrics,
+        "precedent_llm_estimated_cost_usd_total",
+        **labels,
+    ) == pytest.approx(0.0000524)
+
+
 def test_openapi_exposes_small_typed_surface_and_contract_metadata() -> None:
     client, _, _ = client_for()
 
     schema = client.get("/openapi.json").json()
     version = client.get("/version")
 
-    assert {"/health", "/ready", "/version", "/retrieve", "/answer"} <= set(schema["paths"])
+    assert {"/health", "/ready", "/metrics", "/version", "/retrieve", "/answer"} <= set(
+        schema["paths"]
+    )
     assert "RetrieveRequest" in schema["components"]["schemas"]
     assert "AnswerResponse" in schema["components"]["schemas"]
     assert version.json()["citation_contract"] == "production-citation-v1"

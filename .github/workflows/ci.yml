@@ -91,6 +91,11 @@ jobs:
           test "$ready_status" = 200
           curl --fail --silent --show-error http://127.0.0.1:8000/health
           grep --quiet '"retrieval":true' /tmp/ready.json
+          curl --fail --silent --show-error --output /tmp/metrics.txt \
+            http://127.0.0.1:8000/metrics
+          grep --quiet '^precedent_http_requests_total' /tmp/metrics.txt
+          grep --quiet '^precedent_retrieval_ready 1.0$' /tmp/metrics.txt
+          grep --quiet '^precedent_retrieval_documents ' /tmp/metrics.txt
           curl --fail --silent --show-error --header 'Content-Type: application/json' \
             --data '{"facts":"objective contract","top_k":1}' \
             http://127.0.0.1:8000/retrieve | grep --quiet '"case_id":"case:0"'

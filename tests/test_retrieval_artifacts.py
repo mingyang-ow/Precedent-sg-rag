@@ -297,6 +297,7 @@ def test_api_uses_prepared_bundle_and_exposes_safe_identity(
     ready = client.get("/ready")
     version = client.get("/version")
     retrieved = client.post("/retrieve", json={"facts": "objective contract", "top_k": 2})
+    metrics = client.get("/metrics")
 
     assert health.status_code == 200
     assert ready.status_code == 200
@@ -306,6 +307,12 @@ def test_api_uses_prepared_bundle_and_exposes_safe_identity(
     assert "bundle" not in version.text
     assert retrieved.status_code == 200
     assert retrieved.json()["results"][0]["case_id"] == "case:0"
+    assert metrics.status_code == 200
+    assert "precedent_retrieval_documents 4.0" in metrics.text
+    assert (
+        'precedent_retrieval_artifact_info{artifact_version="passage-bm25-v1"} 1.0' in metrics.text
+    )
+    assert "precedent_retrieval_artifact_load_seconds" in metrics.text
 
 
 def test_api_stays_live_but_not_ready_for_invalid_bundle(tmp_path: Path) -> None:
