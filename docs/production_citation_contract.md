@@ -2,9 +2,9 @@
 
 ## Status
 
-Phase 4 establishes the application boundary for evidence-traceable citations. It does not call a
-model, change retrieval, or reinterpret the Phase 3 experiments. The next integration target is a
-FastAPI service.
+Phase 4 established the application boundary for evidence-traceable citations. It did not call a
+model, change retrieval, or reinterpret the Phase 3 experiments. Phase 5 now exposes the boundary
+through the typed [FastAPI service](api.md).
 
 Earlier bounded-RAG evaluation required the model to copy a verbatim quotation. Phase 3.1 showed
 why that is a poor production responsibility: four apparent failures were encoding artifacts, and
@@ -127,5 +127,5 @@ with referential-integrity checks.
 The resolver proves provenance, not semantic entailment. Claim-support evaluation remains a
 separate concern; Phase 4 does not introduce an LLM judge, embeddings, or fuzzy matching. The
 frozen `EvidencePackage` is the current storage boundary rather than a database-backed evidence
-service. Provider integration, HTTP error mapping, persistence, and request authentication belong
-to the FastAPI phase.
+service. Phase 5 adds provider abstraction and HTTP error mapping. Persistence, caching, and
+deployment remain Phase 6 work; request authentication remains a later product decision.

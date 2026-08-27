@@ -1,13 +1,42 @@
 # Precedent SG RAG
 
-An evaluation-first Singapore legal citation retrieval and grounded RAG project built on
+A production-oriented Singapore legal-precedent RAG service with measurable retrieval, explicit
+abstention, typed grounded generation, and application-owned citations. Built on
 [SG-LegalCite](https://huggingface.co/datasets/anonymousmeowmeow/SG-LegalCite).
 
 The system is a production-oriented RAG portfolio project, not a legal-advice service. Dataset
 validation, retrieval protocols, failure analysis, and deterministic evidence traceability are
 treated as first-class outputs.
 
-## Current scope: Phase 4 production citation contract
+## At a glance
+
+```text
+legal facts + optional principle
+    -> leakage-safe historical passage BM25
+    -> bounded structured generation or explicit abstention
+    -> evidence-ID and case-ID validation
+    -> application-controlled source passage
+    -> typed FastAPI response
+```
+
+- Corpus repair improved full-corpus BM25 Recall@10 from about 1.7% to 20.2% by replacing
+  identifier-only candidates with historical citation passages.
+- A clean-room 12-record behavioral pilot achieved 0.722 balanced accuracy and exposed hidden
+  benchmark metadata before expansion.
+- Production answers reference immutable evidence; the model never controls displayed source text.
+- `/retrieve` works without model credentials; `/answer` uses an injectable provider boundary.
+
+## API quick start
+
+```bash
+uv sync --extra dev --extra generation --extra api
+uv run uvicorn sg_legal_rag.api.app:app --reload
+```
+
+Open `http://127.0.0.1:8000/docs`, or call `GET /health`, `GET /ready`, `POST /retrieve`, and
+`POST /answer`. Starting the service and checking readiness never call a model provider.
+
+## Current scope: Phase 5 FastAPI service
 
 - Reproducible download from an immutable Hugging Face revision.
 - Streaming schema, integrity, completeness, and extraction-quality checks.
@@ -28,6 +57,8 @@ treated as first-class outputs.
 - Application-owned source-text resolution with deterministic ID, visibility, case, and digest
   validation.
 - Explicit abstention preserved across the historical and production contracts.
+- Typed health, readiness, retrieval, answer, version, and error responses.
+- Request IDs, structured privacy-conscious logs, and per-stage latency instrumentation.
 - Layered retrieval, generation, citation, hallucination, and abstention evaluation.
 
 ## Quick start
@@ -91,7 +122,8 @@ decision to proceed to bounded RAG evaluation are in
 [docs/corpus_repair.md](docs/corpus_repair.md).
 The frozen generation protocol, request/cost forecast, historical output contract, and Phase 3
 results are in [docs/rag_baseline.md](docs/rag_baseline.md). The application-owned evidence-ID
-design is in [docs/production_citation_contract.md](docs/production_citation_contract.md).
+design is in [docs/production_citation_contract.md](docs/production_citation_contract.md). Service
+configuration, endpoints, error mapping, and local startup are in [docs/api.md](docs/api.md).
 
 ## Roadmap
 
@@ -106,8 +138,9 @@ design is in [docs/production_citation_contract.md](docs/production_citation_con
    clean-room adjudication, and citation evaluator audit complete.
 7. Evidence-ID production citation contract. ✓ Application-owned source resolution and safe
    referential validation complete.
-8. FastAPI service. Next.
-9. Deployment, persistence, and observability.
+8. FastAPI service. ✓ Typed offline-tested HTTP boundary with injectable provider.
+9. Docker plus persistence/caching. Next.
+10. Observability and interviewer-facing demo polish.
 
 Dataset material is CC BY 4.0 and remains under its upstream licence. Project code is MIT
 licensed. Do not treat the project licence as relicensing the dataset or source judgments.
