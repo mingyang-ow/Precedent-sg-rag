@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from pydantic import ValidationError
 
 from sg_legal_rag.generation import semantic_judge_benchmark as benchmark_module
 from sg_legal_rag.generation.behaviour_pilot import canonical_digest
+from sg_legal_rag.generation.schema import AnswerStatus, GroundedAnswer
 from sg_legal_rag.generation.semantic_judge import (
     JUDGE_SCHEMA_VERSION,
     JUDGE_SYSTEM_INSTRUCTIONS,
@@ -120,11 +122,45 @@ def test_prepare_is_deterministic_and_never_constructs_provider(
         "GoogleGeminiSemanticJudge",
         lambda **kwargs: pytest.fail("provider must not be constructed during preparation"),
     )
+    committed = frozen_pilot()
+    answers = {
+        package.source_package_id: package.generated_answer for package in committed.packages
+    }
+
+    def fake_load_record(path, *, run_signature, package_id):
+        del path, run_signature
+        answer = answers.get(
+            package_id,
+            GroundedAnswer(
+                status=AnswerStatus.INSUFFICIENT_EVIDENCE,
+                recommended_case_id=None,
+                explanation="The supplied evidence does not support a precedent recommendation.",
+                claims=[],
+            ),
+        )
+        packages = benchmark_module.preflight_frozen_behaviour_execution(
+            rag_config_path=benchmark_module.DEFAULT_CONFIG,
+            global_manifest_path=benchmark_module.DEFAULT_MANIFEST,
+            behaviour_manifest_path=benchmark_module.DEFAULT_BEHAVIOUR_PILOT,
+            behaviour_packages_path=benchmark_module.DEFAULT_BEHAVIOUR_PACKAGES,
+            behaviour_adjudication_path=benchmark_module.DEFAULT_BEHAVIOUR_ADJUDICATION,
+            answer_adjudication_path=benchmark_module.DEFAULT_PILOT_ADJUDICATION,
+        )[2]
+        package = next(item for item in packages if item.package_id == package_id)
+        return SimpleNamespace(
+            package=package,
+            result=SimpleNamespace(answer=answer, error=None),
+        )
+
+    monkeypatch.setattr(benchmark_module, "load_record", fake_load_record)
+    monkeypatch.setattr(
+        benchmark_module, "assert_cached_record_matches_execution", lambda *args, **kwargs: None
+    )
 
     first = prepare_frozen_pilot()
     second = prepare_frozen_pilot()
 
-    assert first == second == frozen_pilot()
+    assert first == second == committed
     assert first.expected_calls == 8
     assert sum(len(package.generated_answer.claims) for package in first.packages) == 14
 
