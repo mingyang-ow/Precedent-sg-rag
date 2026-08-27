@@ -284,6 +284,16 @@ two failed records, but three genuine quotation failures remain. Changing eviden
 verification metadata to the prompt would be a model-visible Type B change requiring a new evidence
 digest, run signature, and pilot; Phase 3.1 makes no such change.
 
+## Phase 4 production boundary
+
+The strict and normalized quotation metrics above remain immutable historical evaluation results.
+They motivated, but are not overwritten by, the separate
+[production citation contract](production_citation_contract.md). Under that versioned contract,
+the model returns `evidence_id` and matching `case_id` references; the application validates those
+references against exactly supplied evidence and resolves authoritative passage text from the
+stored `EvidenceItem`. The new prompt and schema have distinct signatures and have not been used
+for inference. Any future execution requires a new frozen run identity.
+
 Automatic SDK retries are disabled (`max_retries=0`), so 352 logical calls mean 352 planned HTTP
 attempts. Cache resumption makes completed records free to reuse. The command exits non-zero when
 all provider attempts in an invocation fail. The explicit `--retry-errors` option can add at most

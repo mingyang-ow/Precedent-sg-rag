@@ -3,10 +3,11 @@
 An evaluation-first Singapore legal citation retrieval and grounded RAG project built on
 [SG-LegalCite](https://huggingface.co/datasets/anonymousmeowmeow/SG-LegalCite).
 
-The system is an engineering benchmark, not a legal-advice service. Dataset validation, retrieval
-protocols, and failure analysis are treated as first-class outputs.
+The system is a production-oriented RAG portfolio project, not a legal-advice service. Dataset
+validation, retrieval protocols, failure analysis, and deterministic evidence traceability are
+treated as first-class outputs.
 
-## Current scope: Phase 3 bounded RAG evaluation
+## Current scope: Phase 4 production citation contract
 
 - Reproducible download from an immutable Hugging Face revision.
 - Streaming schema, integrity, completeness, and extraction-quality checks.
@@ -22,7 +23,11 @@ protocols, and failure analysis are treated as first-class outputs.
 - Facts-only, principle-only, and facts-plus-principle ablations.
 - Recall@K, MRR, nDCG@K, latency, court, and year reporting.
 - Deterministic oracle, retrieved-context, and insufficient-evidence generation conditions.
-- Strict structured outputs, traceable quotes, explicit abstention, and restart-safe result caches.
+- Preserved historical quote-based evaluation and restart-safe result caches.
+- Versioned production claims that reference immutable evidence IDs instead of generating quotes.
+- Application-owned source-text resolution with deterministic ID, visibility, case, and digest
+  validation.
+- Explicit abstention preserved across the historical and production contracts.
 - Layered retrieval, generation, citation, hallucination, and abstention evaluation.
 
 ## Quick start
@@ -84,8 +89,9 @@ The cross-encoder ablation, candidate-recall accounting, and latency tradeoff ar
 The leakage-safe historical-context construction, warm/cold coverage, full repair matrix, and
 decision to proceed to bounded RAG evaluation are in
 [docs/corpus_repair.md](docs/corpus_repair.md).
-The frozen generation protocol, request/cost forecast, output contract, and pre-inference hold are
-in [docs/rag_baseline.md](docs/rag_baseline.md).
+The frozen generation protocol, request/cost forecast, historical output contract, and Phase 3
+results are in [docs/rag_baseline.md](docs/rag_baseline.md). The application-owned evidence-ID
+design is in [docs/production_citation_contract.md](docs/production_citation_contract.md).
 
 ## Roadmap
 
@@ -96,9 +102,12 @@ in [docs/rag_baseline.md](docs/rag_baseline.md).
    candidate strings; validation-tuned fusion remains optional.
 5. Leakage-safe citation-context corpus repair. ✓ Passage BM25 materially improves retrieval;
    cold-start limits remain explicit.
-6. Citation-constrained generation and component-level evaluation. ◐ Offline pipeline and frozen
-   subset complete; inference awaits explicit cost approval.
-7. API, experiment tracking, and observability.
+6. Citation-constrained generation and component-level evaluation. ✓ Frozen behavioral pilot,
+   clean-room adjudication, and citation evaluator audit complete.
+7. Evidence-ID production citation contract. ✓ Application-owned source resolution and safe
+   referential validation complete.
+8. FastAPI service. Next.
+9. Deployment, persistence, and observability.
 
 Dataset material is CC BY 4.0 and remains under its upstream licence. Project code is MIT
 licensed. Do not treat the project licence as relicensing the dataset or source judgments.
