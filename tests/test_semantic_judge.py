@@ -296,7 +296,7 @@ def test_google_adapter_is_stateless_structured_and_one_shot() -> None:
         "max_output_tokens": 600,
     }
     assert result.usage is not None and result.usage.thought_tokens == 2
-    assert result.estimated_cost_usd == pytest.approx((10 * 0.75 + 7 * 3.75) / 1_000_000)
+    assert result.estimated_cost_usd == 0
 
 
 def test_unavailable_provider_is_operational_failure_not_unsupported(tmp_path: Path) -> None:
@@ -362,6 +362,30 @@ def test_provider_is_not_created_when_integrity_preflight_fails(
     assert constructed is False
 
 
+def test_live_execution_requires_explicit_free_tier_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    constructed = False
+
+    def forbidden(settings):
+        nonlocal constructed
+        constructed = True
+        raise AssertionError("provider must not be constructed")
+
+    monkeypatch.setattr(benchmark_module, "_provider_from_environment", forbidden)
+
+    status = benchmark_module.main(
+        [
+            "--execute",
+            "--confirm-run-signature",
+            frozen_pilot().run_signature,
+        ]
+    )
+
+    assert status == 1
+    assert constructed is False
+
+
 def test_uncertain_reference_is_excluded_from_binary_denominator() -> None:
     pilot = frozen_pilot()
     reference_artifact = reference()
@@ -392,6 +416,12 @@ def test_run_signature_and_challenge_fixture_are_frozen() -> None:
     challenge = json.loads(CHALLENGES.read_text(encoding="utf-8"))
 
     assert semantic_run_signature(pilot) == pilot.run_signature
+    assert pilot.settings.billing_tier == "free"
+    assert pilot.settings.allow_paid_tier is False
+    assert pilot.settings.fallback_model == "gemini-3.5-flash"
+    assert pilot.settings.automatic_fallback is False
+    assert pilot.settings.free_tier_content_may_improve_google_products is True
+    assert pilot.token_cost_estimate["ceiling_cost_usd"] == 0
     assert [fixture["type"] for fixture in challenge["fixtures"]] == [
         "supported_paraphrase",
         "unsupported_overclaim",

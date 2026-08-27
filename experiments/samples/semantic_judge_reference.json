@@ -2,7 +2,7 @@
   "schema_version": 1,
   "reference_version": "semantic-judge-reference-v1",
   "source_run_signature": "3664b44b7d4dbe620225d598",
-  "source_pilot_digest": "50b221eaa81fdfb40fb651010551d0cfe3944dc3d2cbd9d31cf6487bfeeaa318",
+  "source_pilot_digest": "9ecb2a0d2f42232bf82e8d8957c095312e82acf08ff65a3cbaee1331dbac0f06",
   "provenance": [
     "pre-existing completed behavioral-pilot manual review",
     "pre-existing clean-room behavioral adjudication",
@@ -81,5 +81,5 @@
       "rationale": "The passage does not support the answer's recommendation for the query's share-dilution issue."
     }
   ],
-  "digest": "ad7c3c4e7765df4a1b8320af5e71e85348de5bf7a83f1b26257ab79112b5a8ae"
+  "digest": "92a4e50924a57d9dcd15e46ba000f3407bcb0c681f3a8ff594d450d404b3f234"
 }

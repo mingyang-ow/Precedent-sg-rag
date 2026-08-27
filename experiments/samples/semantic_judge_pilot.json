@@ -352,7 +352,7 @@
       "source_package_id": "404920c168c10748e0258895"
     }
   ],
-  "run_signature": "f0fd664ba59de6f1adaf7d78",
+  "run_signature": "cc5a3538e92350348ddf1847",
   "schema_version": 1,
   "selected_package_ids": [
     "55b464702f081a3ff6d688fb",
@@ -365,12 +365,18 @@
     "404920c168c10748e0258895"
   ],
   "settings": {
+    "allow_paid_tier": false,
+    "automatic_fallback": false,
     "automatic_retries": 0,
+    "billing_tier": "free",
+    "data_classification": "public_or_licensed_evaluation_only",
     "expected_output_tokens": 220,
-    "input_usd_per_million": 0.75,
+    "fallback_model": "gemini-3.5-flash",
+    "free_tier_content_may_improve_google_products": true,
+    "input_usd_per_million": 0.0,
     "max_output_tokens": 600,
     "model": "gemini-3.7-flash",
-    "output_usd_per_million": 3.75,
+    "output_usd_per_million": 0.0,
     "pricing_snapshot_date": "2026-08-27",
     "provider": "google_gemini_interactions",
     "thinking_level": "medium",
@@ -379,8 +385,8 @@
   "source_package_artifact_digest": "a7768ccb7959189a29a394dc3e611bbd9e3c8dc7053610f96151672c741f2e77",
   "source_run_signature": "3664b44b7d4dbe620225d598",
   "token_cost_estimate": {
-    "ceiling_cost_usd": 0.031239,
-    "expected_cost_usd": 0.019839,
+    "ceiling_cost_usd": 0.0,
+    "expected_cost_usd": 0.0,
     "expected_output_tokens": 1760,
     "input_tokens": 17652,
     "input_tokens_per_request": {
@@ -392,8 +398,8 @@
     "method": "conservative local UTF-8 bytes/4 estimate; provider accounting may differ",
     "pricing_snapshot_date": "2026-08-27",
     "pricing_usd_per_million": {
-      "input": 0.75,
-      "output": 3.75
+      "input": 0.0,
+      "output": 0.0
     },
     "requests": 8
   }

@@ -233,7 +233,7 @@ class GoogleGeminiSemanticJudge:
 
     def __init__(self, *, api_key: str, client: Any | None = None) -> None:
         if not api_key:
-            raise ValueError("JUDGE_API_KEY is required")
+            raise ValueError("GEMINI_API_KEY is required")
         if client is None:
             import httpx
 

@@ -57,11 +57,17 @@ class JudgeSettings(BaseModel):
 
     provider: Literal["google_gemini_interactions"]
     model: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]+$")
+    fallback_model: str = Field(pattern=r"^[a-z0-9][a-z0-9._-]+$")
     thinking_level: Literal["low", "medium", "high"]
     max_output_tokens: int = Field(gt=0)
     expected_output_tokens: int = Field(gt=0)
     timeout_seconds: float = Field(gt=0, le=120)
     automatic_retries: Literal[0]
+    automatic_fallback: Literal[False]
+    billing_tier: Literal["free"]
+    allow_paid_tier: Literal[False]
+    data_classification: Literal["public_or_licensed_evaluation_only"]
+    free_tier_content_may_improve_google_products: Literal[True]
     pricing_snapshot_date: str
     input_usd_per_million: float = Field(ge=0)
     output_usd_per_million: float = Field(ge=0)
@@ -70,6 +76,10 @@ class JudgeSettings(BaseModel):
     def validate_output_budget(self) -> JudgeSettings:
         if self.expected_output_tokens > self.max_output_tokens:
             raise ValueError("expected judge output cannot exceed maximum output")
+        if self.fallback_model == self.model:
+            raise ValueError("fallback judge model must differ from the primary model")
+        if self.input_usd_per_million != 0 or self.output_usd_per_million != 0:
+            raise ValueError("Free Tier judge pricing must remain zero")
         return self
 
 
@@ -507,12 +517,12 @@ def execute_frozen_pilot(
 
 
 def _provider_from_environment(settings: JudgeSettings) -> SemanticJudgeProvider:
-    api_key = os.environ.get("JUDGE_API_KEY", "")
+    api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
-        raise ValueError("JUDGE_API_KEY is required for paid execution")
+        raise ValueError("GEMINI_API_KEY is required for approved Free Tier execution")
     for name in ("OPENAI_API_KEY", "PRECEDENT_API_KEY", "PRECEDENT_METRICS_KEY"):
         if os.environ.get(name) == api_key:
-            raise ValueError(f"JUDGE_API_KEY must remain separate from {name}")
+            raise ValueError(f"GEMINI_API_KEY must remain separate from {name}")
     return GoogleGeminiSemanticJudge(api_key=api_key)
 
 
@@ -520,14 +530,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare or execute the semantic judge pilot")
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--prepare", action="store_true", help="freeze packages; no provider")
-    action.add_argument("--preflight", action="store_true", help="verify the frozen paid run")
-    action.add_argument("--execute", action="store_true", help="perform paid provider calls")
+    action.add_argument("--preflight", action="store_true", help="verify the frozen live run")
+    action.add_argument("--execute", action="store_true", help="perform approved Free Tier calls")
     parser.add_argument("--config", type=Path, default=DEFAULT_JUDGE_CONFIG)
     parser.add_argument("--packages", type=Path, default=DEFAULT_JUDGE_PACKAGES)
     parser.add_argument("--reference", type=Path, default=DEFAULT_JUDGE_REFERENCE)
     parser.add_argument("--output", type=Path, default=DEFAULT_JUDGE_OUTPUT)
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_JUDGE_CACHE)
     parser.add_argument("--confirm-run-signature")
+    parser.add_argument(
+        "--confirm-free-tier",
+        action="store_true",
+        help="confirm the configured Gemini project is not billing-enabled",
+    )
     return parser.parse_args(argv)
 
 
@@ -556,7 +571,9 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"verified": True, "calls": 0, "run_signature": pilot.run_signature}))
             return 0
         if args.confirm_run_signature != pilot.run_signature:
-            raise ValueError("--confirm-run-signature must match the frozen paid run")
+            raise ValueError("--confirm-run-signature must match the frozen live run")
+        if not args.confirm_free_tier:
+            raise ValueError("--confirm-free-tier is required; do not use a billing-enabled key")
         provider = _provider_from_environment(pilot.settings)
         result = execute_frozen_pilot(
             pilot=pilot,

@@ -87,7 +87,8 @@ Open `http://127.0.0.1:8000/docs`, or call `GET /health`, `GET /ready`, `POST /r
   an untrusted-data prompt envelope, adversarial offline fixtures, and artifact symlink rejection.
 - Layered retrieval, generation, citation, hallucination, and abstention evaluation.
 - Frozen out-of-band semantic-judge packages, strict per-record/per-claim decisions, and an
-  independently prepared reference adjudication; paid calibration remains explicitly gated.
+  independently prepared reference adjudication; Free Tier live calibration remains explicitly
+  gated.
 
 ## Quick start
 
@@ -178,8 +179,8 @@ pilot, and calibration metrics are in [docs/semantic_judge.md](docs/semantic_jud
 9. Docker plus persistent retrieval artifacts. ✓ Non-root/read-only CI gate complete.
 10. Operational observability. ✓ Privacy-safe Prometheus metrics and Grafana-ready dashboard.
 11. Security and abuse testing. ✓ Practical trust boundaries and offline regressions complete.
-12. Independent semantic judge. Offline implementation complete; paid eight-record calibration
-    pilot awaits explicit approval.
+12. Independent semantic judge. Offline implementation complete; Free Tier eight-record
+    calibration awaits separate live-inference approval.
 
 Dataset material is CC BY 4.0 and remains under its upstream licence. Project code is MIT
 licensed. Do not treat the project licence as relicensing the dataset or source judgments.

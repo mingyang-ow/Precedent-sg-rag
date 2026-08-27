@@ -31,18 +31,24 @@ model as a stable generally available model with structured output, thinking lev
 [latest-model guide](https://ai.google.dev/gemini-api/docs/latest-model), and
 [structured-output guide](https://ai.google.dev/gemini-api/docs/structured-output).
 
-The pricing snapshot dated 2026-08-27 records Google's promotional paid-tier rates of $0.75 per
-million input tokens and $3.75 per million output tokens. The promotion is documented as ending
-2026-12-31; any later run must refresh the frozen configuration and cost estimate against the
-[official pricing page](https://ai.google.dev/gemini-api/docs/pricing). Model aliases and provider
-behavior can change even when this repository's run signature does not, so returned model metadata
-is retained in execution results.
+The pilot is restricted to the Gemini Developer API **Free Tier**. The 2026-08-27 snapshot records
+both input and output as free of charge for `gemini-3.7-flash`; Google also states that Free Tier
+content may be used to improve its products. Only the existing public/licensed Precedent evaluation
+material may therefore be submitted. Confidential material, private Obsidian content, and hidden
+reviewer metadata must never enter the provider payload. Do not enable Google Cloud billing or a
+paid Gemini plan for this project. See the [official pricing and data-use table](https://ai.google.dev/gemini-api/docs/pricing)
+and [billing guide](https://ai.google.dev/gemini-api/docs/billing).
+
+The non-automatic fallback is Free Tier `gemini-3.5-flash`, which Google also lists as stable with
+structured outputs. If 3.7 is inaccessible, stop the frozen run. Trying 3.5 requires a new model
+configuration, run signature, and explicit approval; it is not an automatic retry. If neither model
+is accessible on the existing Free Tier project, stop rather than enabling billing. See the
+[Gemini 3.5 Flash model card](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash).
 
 The adapter uses the provider's current Interactions HTTP API behind a small
 `SemanticJudgeProvider` protocol. It sends one stateless `store=false` request per whole answer,
 provides no tools, stores no application secret in artifacts, applies a 30-second timeout, and
-performs zero automatic retries. Billed output cost includes reported thought tokens.
-`JUDGE_API_KEY` must be separate from
+performs zero automatic retries or fallbacks. `GEMINI_API_KEY` must be separate from
 `OPENAI_API_KEY`, `PRECEDENT_API_KEY`, and `PRECEDENT_METRICS_KEY`.
 
 ## Clean-room input and prompt isolation
@@ -63,8 +69,9 @@ but does not eliminate model manipulation.
 The provider does not receive generator identity, provider settings, previous labels or scores,
 clean-room labels, gold targets, accepted case IDs, `target_present`,
 `citation_relationship_verified`, retrieval ranks or scores, sufficiency labels, builder
-rationales, previous judge results, confusion matrices, or private notes. Package IDs and digests
-are retained locally for integrity and joins but are absent from the provider payload.
+rationales, previous judge results, confusion matrices, private Obsidian notes, or other
+confidential material. Package IDs and digests are retained locally for integrity and joins but are
+absent from the provider payload.
 
 ## Versioned decision contract
 
@@ -112,7 +119,7 @@ binary denominators. Every disagreement is preserved as `pending_manual_review`;
 each must be manually classified before Phase 7.6 can be called complete. The sample is too small for
 statistical or leaderboard claims.
 
-## Offline workflow and paid gate
+## Offline workflow and Free Tier gate
 
 Preparation validates the original behavioral manifest, evidence locks, generation prompt and
 settings, and every cached response before projecting the eight answered records. Preparation never
@@ -123,17 +130,19 @@ uv run sg-legal-semantic-judge --prepare
 uv run sg-legal-semantic-judge --preflight
 ```
 
-The committed pilot has run signature `f0fd664ba59de6f1adaf7d78`. Paid execution requires the
-separate secret and an exact signature confirmation:
+The committed Free Tier pilot has run signature `cc5a3538e92350348ddf1847`. Live execution requires
+the separate secret, an exact signature confirmation, explicit confirmation that the key belongs
+to a non-billing-enabled project, and a separate approval:
 
 ```bash
-JUDGE_API_KEY='...' uv run sg-legal-semantic-judge --execute \
-  --confirm-run-signature f0fd664ba59de6f1adaf7d78
+GEMINI_API_KEY='...' uv run sg-legal-semantic-judge --execute \
+  --confirm-run-signature cc5a3538e92350348ddf1847 \
+  --confirm-free-tier
 ```
 
-Do not run that command without explicit budget approval. Integrity, reference, and signature
+Do not run that command without separate live-inference approval. Integrity, reference, and signature
 checks finish before provider construction. Per-record results are cached, including operational
-failures, so a restart does not silently retry paid calls. Judge observability stays in the offline
+failures, so a restart does not silently retry calls. Judge observability stays in the offline
 result artifact—request counts, failures, durations, verdicts, tokens, and cost—rather than adding
 Prometheus surface to the production service. No query, evidence, or rationale becomes a metric
 label.

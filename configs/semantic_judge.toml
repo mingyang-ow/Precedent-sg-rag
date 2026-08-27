@@ -1,13 +1,19 @@
 [judge]
 provider = "google_gemini_interactions"
 model = "gemini-3.7-flash"
+fallback_model = "gemini-3.5-flash"
 thinking_level = "medium"
 max_output_tokens = 600
 expected_output_tokens = 220
 timeout_seconds = 30
 automatic_retries = 0
+automatic_fallback = false
+billing_tier = "free"
+allow_paid_tier = false
+data_classification = "public_or_licensed_evaluation_only"
+free_tier_content_may_improve_google_products = true
 
 [pricing]
 snapshot_date = "2026-08-27"
-input_usd_per_million = 0.75
-output_usd_per_million = 3.75
+input_usd_per_million = 0.0
+output_usd_per_million = 0.0
