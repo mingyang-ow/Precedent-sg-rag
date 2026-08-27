@@ -1,0 +1,100 @@
+{
+  "automatic_fallback": false,
+  "automatic_retries": 0,
+  "metrics": {
+    "claim_level": {
+      "agreement": null,
+      "raw_counts": {
+        "agreement": 0,
+        "evaluated": 0,
+        "judge": {},
+        "reference": {},
+        "reference_uncertain_excluded_from_binary": 0
+      },
+      "supported_precision": null,
+      "supported_recall": null,
+      "uncertain_rate": null,
+      "unsupported_detection_rate": null
+    },
+    "disagreements": [],
+    "judge_unavailable": [],
+    "malformed_output": [],
+    "not_attempted": [
+      "266a3190b2ba1df079c15645",
+      "615689094ac2690f02642f7d",
+      "7cfe4dcc0cc44a18b4f6a498",
+      "a35f9a4b139ba3a67608dcee",
+      "4a485ec6ed04a9358fa9b711",
+      "88f23f608864cf5f1372a038",
+      "404920c168c10748e0258895"
+    ],
+    "provider_incomplete": [
+      "55b464702f081a3ff6d688fb"
+    ],
+    "record_level": {
+      "agreement": null,
+      "raw_counts": {
+        "agreement": 0,
+        "evaluated": 0,
+        "judge": {},
+        "reference": {},
+        "reference_uncertain_excluded_from_binary": 0
+      },
+      "supported_precision": null,
+      "supported_recall": null,
+      "uncertain_rate": null,
+      "unsupported_detection_rate": null
+    }
+  },
+  "model": "gemini-3.5-flash",
+  "operational_summary": {
+    "duration_seconds": 5.31125206500019,
+    "estimated_cost_usd": 0.0,
+    "failures": 1,
+    "input_tokens": 1212,
+    "judge_unavailable": 0,
+    "malformed_outputs": 0,
+    "output_tokens": 11,
+    "provider_incomplete": 1,
+    "successes": 0,
+    "thought_tokens": 573,
+    "total_tokens": 1796,
+    "verdicts": {}
+  },
+  "provider": "google_gemini_interactions",
+  "records_processed": 1,
+  "requests": 1,
+  "results": [
+    {
+      "package_digest": "e9ea386ef14099bc75946c2ed6635d41844514f886048b4cfeb556fbc648421e",
+      "package_id": "55b464702f081a3ff6d688fb",
+      "result": {
+        "decision": null,
+        "error": "provider interaction did not complete",
+        "estimated_cost_usd": 0.0,
+        "generated_at": "2026-08-27T23:27:40.851715+00:00",
+        "incomplete_reason": null,
+        "latency_ms": 5311.25206500019,
+        "partial_model_output_present": true,
+        "provider_status": "incomplete",
+        "requested_model": "gemini-3.5-flash",
+        "response_id": null,
+        "returned_model": "gemini-3.5-flash",
+        "status": "provider_incomplete",
+        "thought_content_present": false,
+        "usage": {
+          "input_tokens": 1212,
+          "output_tokens": 11,
+          "thought_tokens": 573,
+          "total_tokens": 1796
+        }
+      },
+      "run_signature": "3bab30d3f23f6f8cc3d2e49a",
+      "schema_version": 1
+    }
+  ],
+  "run_signature": "3bab30d3f23f6f8cc3d2e49a",
+  "run_status": "stopped_provider_incomplete",
+  "schema_version": 1,
+  "stopped_package_id": "55b464702f081a3ff6d688fb"
+}

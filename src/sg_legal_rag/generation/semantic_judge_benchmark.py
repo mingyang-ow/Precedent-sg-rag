@@ -119,6 +119,8 @@ class FrozenSemanticJudgePilot(BaseModel):
             or self.judge_rubric_signature != expected_contract["rubric_signature"]
         ):
             raise ValueError("semantic judge prompt, schema, or rubric changed")
+        if self.token_cost_estimate != estimate_tokens_and_cost(self.packages, self.settings):
+            raise ValueError("semantic judge token and cost estimate changed")
         if semantic_run_signature(self) != self.run_signature:
             raise ValueError("semantic judge run signature mismatch")
         return self
@@ -352,9 +354,11 @@ def validate_reference_against_pilot(
     if reference_pilot is not None:
         source = reference_pilot.model_dump(mode="json", exclude={"run_signature"})
         retry = pilot.model_dump(mode="json", exclude={"run_signature"})
-        for field in ("model", "timeout_seconds"):
+        for field in ("max_output_tokens", "model", "timeout_seconds"):
             source["settings"].pop(field)
             retry["settings"].pop(field)
+        source.pop("token_cost_estimate")
+        retry.pop("token_cost_estimate")
         if source != retry:
             raise ValueError("semantic judge retry changed frozen protocol or settings")
     if tuple(record.package_id for record in reference.records) != pilot.selected_package_ids:

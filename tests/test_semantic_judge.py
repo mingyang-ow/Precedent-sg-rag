@@ -28,6 +28,7 @@ from sg_legal_rag.generation.semantic_judge_benchmark import (
     DEFAULT_JUDGE_PACKAGES,
     DEFAULT_JUDGE_REFERENCE,
     JudgeExecutionRecord,
+    estimate_tokens_and_cost,
     evaluate_judge_results,
     execute_frozen_pilot,
     load_frozen_judge_pilot,
@@ -788,7 +789,11 @@ def test_transport_retry_rejects_unrelated_setting_change() -> None:
         update={"timeout_seconds": 60, "thinking_level": "low"}
     )
     provisional = source.model_copy(
-        update={"settings": changed_settings, "run_signature": "0" * 24}
+        update={
+            "settings": changed_settings,
+            "token_cost_estimate": estimate_tokens_and_cost(source.packages, changed_settings),
+            "run_signature": "0" * 24,
+        }
     )
     changed = source.__class__.model_validate(
         provisional.model_dump(mode="json") | {"run_signature": semantic_run_signature(provisional)}
@@ -815,6 +820,40 @@ def test_model_retry_keeps_frozen_protocol_and_uses_new_signature() -> None:
     assert retry.run_signature != source.run_signature
     assert retry.settings.model == "gemini-3.5-flash"
     assert retry.settings.timeout_seconds == 60
+    assert retry.package_payload_digest == source.package_payload_digest
+    assert retry.judge_prompt_signature == source.judge_prompt_signature
+    assert retry.judge_rubric_signature == source.judge_rubric_signature
+    assert retry.judge_schema_signature == source.judge_schema_signature
+
+
+def test_output_budget_retry_keeps_frozen_protocol_and_uses_new_signature() -> None:
+    source = frozen_pilot()
+    changed_settings = source.settings.model_copy(
+        update={
+            "model": "gemini-3.5-flash",
+            "max_output_tokens": 1200,
+            "timeout_seconds": 60,
+        }
+    )
+    provisional = source.model_copy(
+        update={
+            "settings": changed_settings,
+            "token_cost_estimate": estimate_tokens_and_cost(source.packages, changed_settings),
+            "run_signature": "0" * 24,
+        }
+    )
+    retry = source.__class__.model_validate(
+        provisional.model_dump(mode="json") | {"run_signature": semantic_run_signature(provisional)}
+    )
+
+    validate_reference_against_pilot(reference(), retry, reference_pilot=source)
+
+    assert retry.run_signature != source.run_signature
+    assert retry.settings.model == "gemini-3.5-flash"
+    assert retry.settings.thinking_level == "medium"
+    assert retry.settings.max_output_tokens == 1200
+    assert retry.settings.timeout_seconds == 60
+    assert retry.token_cost_estimate["maximum_output_tokens"] == 9600
     assert retry.package_payload_digest == source.package_payload_digest
     assert retry.judge_prompt_signature == source.judge_prompt_signature
     assert retry.judge_rubric_signature == source.judge_rubric_signature
