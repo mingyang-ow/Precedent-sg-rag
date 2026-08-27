@@ -327,7 +327,11 @@ def _expect_mapping(value: object, name: str) -> Mapping[str, Any]:
 
 
 def _read_manifest(bundle_dir: Path) -> tuple[dict[str, Any], str]:
+    if bundle_dir.is_symlink():
+        raise RetrievalArtifactError("retrieval artifact bundle cannot be a symbolic link")
     path = bundle_dir / MANIFEST_FILE
+    if path.is_symlink():
+        raise RetrievalArtifactError("retrieval artifact manifest cannot be a symbolic link")
     try:
         raw = path.read_bytes()
     except OSError as error:
@@ -406,6 +410,8 @@ def _validate_manifest(manifest: Mapping[str, Any]) -> None:
 def _verify_file(bundle_dir: Path, section: Mapping[str, Any]) -> Path:
     file_name = str(section["file"])
     path = bundle_dir / file_name
+    if path.is_symlink():
+        raise RetrievalArtifactError(f"retrieval artifact {file_name} cannot be a symbolic link")
     try:
         size = path.stat().st_size
     except OSError as error:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 import time
 from dataclasses import dataclass
 
@@ -25,8 +26,14 @@ from .provider import (
     OpenAIProductionProvider,
     ProductionGenerationProvider,
     ProviderExecutionError,
+    ProviderTimeoutError,
 )
 from .retrieval import EvidenceRetriever, PreparedPassageBM25Retriever, RetrievalUnavailable
+from .security import (
+    ContextBudgetExceeded,
+    RequestTooLarge,
+    estimate_production_input_tokens,
+)
 from .settings import ApiSettings
 
 
@@ -76,6 +83,9 @@ class RAGApplicationService:
         self.settings = settings
         self.retriever = retriever
         self.provider = provider
+        self._generation_slots = threading.BoundedSemaphore(
+            value=settings.max_concurrent_generations
+        )
         self._metrics = metrics
         if metrics is not None:
             self.install_metrics(metrics)
@@ -93,10 +103,20 @@ class RAGApplicationService:
         identity = getattr(self.retriever, "artifact_identity", None)
         return identity() if identity is not None else None
 
+    def try_acquire_generation_slot(self) -> bool:
+        if self.provider is None:
+            return True
+        return self._generation_slots.acquire(blocking=False)
+
+    def release_generation_slot(self) -> None:
+        if self.provider is not None:
+            self._generation_slots.release()
+
     def retrieve(
         self, *, facts: str, principle: str | None, top_k: int | None
     ) -> RetrievalOperation:
         total_started = time.perf_counter()
+        self._validate_request_size(facts=facts, principle=principle)
         effective_top_k = self._effective_top_k(top_k)
         query_mode, query_text = _query_text(facts, principle)
         retrieval_started = time.perf_counter()
@@ -134,6 +154,9 @@ class RAGApplicationService:
             raise GenerationUnavailable("generation provider is not configured")
         total_started = time.perf_counter()
         retrieval = self.retrieve(facts=facts, principle=principle, top_k=top_k)
+        input_tokens = estimate_production_input_tokens(retrieval.package, self.settings.model_id)
+        if input_tokens > self.settings.max_input_tokens:
+            raise ContextBudgetExceeded("production input exceeds the configured token budget")
         provider_name = str(getattr(self.provider, "provider_name", "custom"))
         model_family = str(getattr(self.provider, "model_family", "custom"))
         generation_started = time.perf_counter()
@@ -147,6 +170,9 @@ class RAGApplicationService:
             generation = self.provider.generate(retrieval.package)
         except MalformedGeneratedOutput:
             provider_failure = "malformed_generated_output"
+            raise
+        except ProviderTimeoutError:
+            provider_failure = "provider_timeout"
             raise
         except ProviderExecutionError:
             provider_failure = "provider_failure"
@@ -191,6 +217,12 @@ class RAGApplicationService:
             retrieval_count=len(retrieval.package.evidence),
             provider_status=generation.provider_status,
         )
+
+    def _validate_request_size(self, *, facts: str, principle: str | None) -> None:
+        if len(facts) > self.settings.max_facts_chars:
+            raise RequestTooLarge("facts exceed the configured character limit")
+        if principle is not None and len(principle) > self.settings.max_principle_chars:
+            raise RequestTooLarge("principle exceeds the configured character limit")
 
     def _effective_top_k(self, requested: int | None) -> int:
         value = self.settings.top_k_default if requested is None else requested
@@ -262,6 +294,7 @@ def build_default_service(settings: ApiSettings) -> RAGApplicationService:
             max_output_tokens=settings.max_output_tokens,
             reasoning_effort=settings.reasoning_effort,
             verbosity=settings.verbosity,
+            timeout_seconds=settings.provider_timeout_seconds,
         )
         if settings.openai_api_key is not None
         else None

@@ -4,9 +4,10 @@ Precedent exposes privacy-safe, Prometheus-compatible runtime metrics at `GET /m
 metrics does not run retrieval or contact the generation provider. The endpoint requires no
 writable state and works in the existing non-root, read-only container.
 
-`/metrics` is intended for an internal monitoring network in production. The service does not add
-authentication in Phase 7, so deployments should restrict the route at the reverse proxy, service
-mesh, or network-policy boundary. Authentication and abuse testing remain Phase 7.5 work.
+`/metrics` is intended for an internal monitoring network in production and requires the separate
+`PRECEDENT_METRICS_KEY` through `X-Precedent-Metrics-Key`. This is defense-in-depth alongside
+reverse-proxy, service-mesh, or network-policy restrictions; it is deliberately distinct from the
+business endpoint credential.
 
 ## Scraping
 
@@ -20,10 +21,14 @@ scrape_configs:
       - targets: ["precedent:8000"]
 ```
 
+Configure the scraper or an internal reverse proxy to add `X-Precedent-Metrics-Key` from a runtime
+secret; do not put the credential directly in this checked-in example.
+
 For a local check:
 
 ```bash
-curl --silent http://127.0.0.1:8000/metrics | grep '^precedent_'
+curl --silent --header "X-Precedent-Metrics-Key: $PRECEDENT_METRICS_KEY" \
+  http://127.0.0.1:8000/metrics | grep '^precedent_'
 ```
 
 The repository includes a datasource-agnostic Grafana dashboard at
@@ -73,6 +78,11 @@ evidence_integrity_failure
 retrieval_unavailable
 generation_unavailable
 request_validation_failure
+authentication_failure
+request_too_large
+context_budget_exceeded
+concurrency_limit
+provider_timeout
 internal_error
 ```
 
@@ -146,5 +156,6 @@ and citation issue codes are likewise bounded.
 Metrics are process-local. Counters reset on restart and Prometheus should sum across replicas.
 The current deployment intentionally uses one Uvicorn worker; a future multi-process deployment
 would require the Prometheus client's multi-process mode or an external aggregation design. Phase
-7 does not add distributed tracing, a collector, log aggregation, authentication, or alerting
-infrastructure.
+7 does not add distributed tracing, a collector, log aggregation, or alerting infrastructure.
+Authentication is service-level only; network isolation and secret rotation remain deployment
+responsibilities.

@@ -16,6 +16,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "httpx>=0.28,<1",
+  "pip-audit>=2.9,<3",
   "pytest>=8.0",
   "ruff>=0.9",
 ]
@@ -29,8 +30,9 @@ generation = [
   "tiktoken>=0.12,<1",
 ]
 api = [
-  "fastapi>=0.116,<0.120",
+  "fastapi>=0.141.1,<0.142",
   "prometheus-client>=0.21,<1",
+  "starlette>=1.3.1,<2",
   "uvicorn>=0.35,<0.36",
 ]
 

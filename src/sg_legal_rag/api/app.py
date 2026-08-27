@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from sg_legal_rag.generation.production_contract import (
     CitationContractIssueCode,
@@ -21,9 +22,16 @@ from .observability import (
     log_event,
     route_template,
 )
-from .provider import MalformedGeneratedOutput, ProviderExecutionError
+from .provider import MalformedGeneratedOutput, ProviderExecutionError, ProviderTimeoutError
 from .retrieval import RetrievalUnavailable
 from .routes import router
+from .security import (
+    AuthenticationFailed,
+    AuthenticationNotConfigured,
+    ContextBudgetExceeded,
+    GenerationConcurrencyExceeded,
+    RequestTooLarge,
+)
 from .service import (
     BadRequestError,
     EvidenceIntegrityError,
@@ -41,6 +49,7 @@ def _error(
     message: str,
     failure_category: str,
     issues: tuple[str, ...] = (),
+    headers: dict[str, str] | None = None,
 ) -> JSONResponse:
     body = ErrorResponse(
         error=ErrorDetail(
@@ -62,7 +71,11 @@ def _error(
         error_code=code,
         issue_codes=issues,
     )
-    return JSONResponse(status_code=status_code, content=body.model_dump(mode="json"))
+    return JSONResponse(
+        status_code=status_code,
+        content=body.model_dump(mode="json"),
+        headers=headers,
+    )
 
 
 def create_app(
@@ -94,10 +107,17 @@ def create_app(
         ),
         version="1.0.0",
         lifespan=lifespan,
+        docs_url="/docs" if resolved_settings.enable_docs else None,
+        openapi_url="/openapi.json" if resolved_settings.enable_docs else None,
+        redoc_url=None,
     )
     application.state.settings = resolved_settings
     application.state.rag_service = resolved_service
     application.state.metrics = resolved_metrics
+    application.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=list(resolved_settings.allowed_hosts),
+    )
     install_request_middleware(application, resolved_metrics)
     application.include_router(router)
 
@@ -106,13 +126,76 @@ def create_app(
         request: Request, error: RequestValidationError
     ) -> JSONResponse:
         issue_types = tuple(str(issue.get("type", "validation_error")) for issue in error.errors())
+        request_too_large = "string_too_long" in issue_types
         return _error(
             request,
-            422,
-            "request_validation_failed",
-            "Request validation failed.",
-            "request_validation_failure",
+            413 if request_too_large else 422,
+            "request_too_large" if request_too_large else "request_validation_failed",
+            "Request exceeds the configured size limit."
+            if request_too_large
+            else "Request validation failed.",
+            "request_too_large" if request_too_large else "request_validation_failure",
             issue_types,
+        )
+
+    @application.exception_handler(AuthenticationFailed)
+    async def authentication_failed_handler(
+        request: Request, error: AuthenticationFailed
+    ) -> JSONResponse:
+        return _error(
+            request,
+            401,
+            "authentication_failed",
+            "A valid service credential is required.",
+            "authentication_failure",
+            headers={"WWW-Authenticate": "APIKey"},
+        )
+
+    @application.exception_handler(AuthenticationNotConfigured)
+    async def authentication_not_configured_handler(
+        request: Request, error: AuthenticationNotConfigured
+    ) -> JSONResponse:
+        return _error(
+            request,
+            503,
+            "authentication_not_configured",
+            "The required service credential is not configured.",
+            "authentication_failure",
+        )
+
+    @application.exception_handler(RequestTooLarge)
+    async def request_too_large_handler(request: Request, error: RequestTooLarge) -> JSONResponse:
+        return _error(
+            request,
+            413,
+            "request_too_large",
+            "Request exceeds the configured size limit.",
+            "request_too_large",
+        )
+
+    @application.exception_handler(ContextBudgetExceeded)
+    async def context_budget_handler(
+        request: Request, error: ContextBudgetExceeded
+    ) -> JSONResponse:
+        return _error(
+            request,
+            413,
+            "context_budget_exceeded",
+            "The bounded evidence context exceeds the provider input limit.",
+            "context_budget_exceeded",
+        )
+
+    @application.exception_handler(GenerationConcurrencyExceeded)
+    async def generation_concurrency_handler(
+        request: Request, error: GenerationConcurrencyExceeded
+    ) -> JSONResponse:
+        return _error(
+            request,
+            429,
+            "generation_concurrency_limit",
+            "Generation capacity is currently saturated.",
+            "concurrency_limit",
+            headers={"Retry-After": "1"},
         )
 
     @application.exception_handler(BadRequestError)
@@ -159,6 +242,18 @@ def create_app(
             "provider_failure",
             "The generation provider failed.",
             "provider_failure",
+        )
+
+    @application.exception_handler(ProviderTimeoutError)
+    async def provider_timeout_handler(
+        request: Request, error: ProviderTimeoutError
+    ) -> JSONResponse:
+        return _error(
+            request,
+            504,
+            "provider_timeout",
+            "The generation provider timed out.",
+            "provider_timeout",
         )
 
     @application.exception_handler(MalformedGeneratedOutput)

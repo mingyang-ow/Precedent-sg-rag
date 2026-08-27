@@ -8,19 +8,21 @@ from sg_legal_rag.generation.evidence import EvidenceOrigin
 from sg_legal_rag.generation.production_contract import ResolvedClaim
 from sg_legal_rag.generation.schema import AnswerStatus
 
+from .settings import ABSOLUTE_MAX_FACTS_CHARS, ABSOLUTE_MAX_PRINCIPLE_CHARS
+
 
 class QueryRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     facts: str = Field(
         min_length=1,
-        max_length=4000,
+        max_length=ABSOLUTE_MAX_FACTS_CHARS,
         description="Facts or legal problem used as the primary retrieval query.",
         examples=["The accused relies on diminished responsibility."],
     )
     principle: str | None = Field(
         default=None,
-        max_length=2000,
+        max_length=ABSOLUTE_MAX_PRINCIPLE_CHARS,
         description="Optional legal principle appended to the facts for assisted retrieval.",
         examples=["Three cumulative requirements for diminished responsibility."],
     )
@@ -117,7 +119,7 @@ class ReadinessResponse(BaseModel):
 class VersionResponse(BaseModel):
     service_version: Literal["api-v1"] = "api-v1"
     citation_contract: Literal["production-citation-v1"] = "production-citation-v1"
-    prompt_version: Literal["rag-production-v1"] = "rag-production-v1"
+    prompt_version: Literal["rag-production-v2"] = "rag-production-v2"
     prompt_signature: str
     schema_signature: str
     retrieval_artifact_version: str | None

@@ -29,6 +29,8 @@ legal facts + optional principle
   source corpus or index.
 - Prometheus-compatible metrics track HTTP and RAG phase latency, answer/abstention behavior,
   provider and citation failures, token usage, and estimated cost without user or evidence text.
+- User queries, retrieved documents, and model output are untrusted; service authentication,
+  bounded cost controls, and deterministic citation checks enforce the application boundary.
 
 ## Docker quick start
 
@@ -36,18 +38,23 @@ legal facts + optional principle
 uv sync --locked --extra generation --extra api
 uv run sg-legal-build-retrieval-artifacts
 docker build --tag precedent-sg-rag:local .
+export PRECEDENT_API_KEY='replace-with-a-distinct-service-secret'
+export PRECEDENT_METRICS_KEY='replace-with-a-distinct-metrics-secret'
 docker run --rm \
+  --env PRECEDENT_API_KEY \
+  --env PRECEDENT_METRICS_KEY \
   --mount type=bind,src="$(pwd)/data/processed/retrieval-artifacts",dst=/opt/precedent/retrieval-artifacts,readonly \
   --publish 8000:8000 precedent-sg-rag:local
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/ready
-curl http://127.0.0.1:8000/metrics
+curl --header "X-Precedent-Metrics-Key: $PRECEDENT_METRICS_KEY" \
+  http://127.0.0.1:8000/metrics
 ```
 
 Open `http://127.0.0.1:8000/docs`, or call `GET /health`, `GET /ready`, `POST /retrieve`, and
 `POST /answer`. Starting the service and checking readiness never call a model provider.
 
-## Current scope: Phase 7 operational observability
+## Current scope: Phase 7.5 security and abuse resistance
 
 - Reproducible download from an immutable Hugging Face revision.
 - Streaming schema, integrity, completeness, and extraction-quality checks.
@@ -74,6 +81,8 @@ Open `http://127.0.0.1:8000/docs`, or call `GET /health`, `GET /ready`, `POST /r
 - Locked, non-root, read-only-capable container with a separately mounted artifact bundle.
 - Per-process Prometheus metrics with bounded route, outcome, provider, failure, and citation-code
   labels plus a Grafana-ready dashboard.
+- Separate service and metrics credentials, bounded input/context/concurrency/timeout policies,
+  an untrusted-data prompt envelope, adversarial offline fixtures, and artifact symlink rejection.
 - Layered retrieval, generation, citation, hallucination, and abstention evaluation.
 
 ## Quick start
@@ -141,7 +150,9 @@ design is in [docs/production_citation_contract.md](docs/production_citation_con
 configuration, endpoints, error mapping, and local startup are in [docs/api.md](docs/api.md).
 Artifact construction, failure behavior, Docker usage, and security posture are in
 [docs/deployment.md](docs/deployment.md). Metric semantics, privacy constraints, PromQL examples,
-and the Grafana dashboard are in [docs/observability.md](docs/observability.md).
+and the Grafana dashboard are in [docs/observability.md](docs/observability.md). The practical threat
+model, access policy, abuse controls, adversarial tests, and residual risks are in
+[docs/security.md](docs/security.md).
 
 ## Roadmap
 
@@ -159,7 +170,8 @@ and the Grafana dashboard are in [docs/observability.md](docs/observability.md).
 8. FastAPI service. ✓ Typed offline-tested HTTP boundary with injectable provider.
 9. Docker plus persistent retrieval artifacts. ✓ Non-root/read-only CI gate complete.
 10. Operational observability. ✓ Privacy-safe Prometheus metrics and Grafana-ready dashboard.
-11. Security and abuse testing. Next.
+11. Security and abuse testing. ✓ Practical trust boundaries and offline regressions complete.
+12. Independent semantic judge. Next.
 
 Dataset material is CC BY 4.0 and remains under its upstream licence. Project code is MIT
 licensed. Do not treat the project licence as relicensing the dataset or source judgments.

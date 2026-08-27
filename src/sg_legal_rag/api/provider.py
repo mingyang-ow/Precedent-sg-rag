@@ -11,10 +11,10 @@ from sg_legal_rag.generation.pricing import estimated_usage_cost, pricing_for_mo
 from sg_legal_rag.generation.production_contract import (
     PRODUCTION_SYSTEM_INSTRUCTIONS,
     ProductionAnswer,
+    render_production_user_input,
 )
 from sg_legal_rag.generation.provider import (
     TokenUsage,
-    render_user_input,
     token_usage_from_response,
 )
 
@@ -36,6 +36,10 @@ class ProviderExecutionError(RuntimeError):
     pass
 
 
+class ProviderTimeoutError(ProviderExecutionError):
+    pass
+
+
 class MalformedGeneratedOutput(RuntimeError):
     pass
 
@@ -51,12 +55,14 @@ class OpenAIProductionProvider:
         max_output_tokens: int,
         reasoning_effort: str,
         verbosity: str,
+        timeout_seconds: float,
     ) -> None:
         self._api_key = api_key
         self._model_id = model_id
         self._max_output_tokens = max_output_tokens
         self._reasoning_effort = reasoning_effort
         self._verbosity = verbosity
+        self._timeout_seconds = timeout_seconds
 
     @property
     def provider_name(self) -> str:
@@ -69,13 +75,20 @@ class OpenAIProductionProvider:
     def generate(self, package: EvidencePackage) -> ProductionGenerationResult:
         started = time.perf_counter()
         try:
-            from openai import OpenAI
+            from openai import APITimeoutError, OpenAI
+        except ImportError as error:
+            raise ProviderExecutionError("generation provider SDK is unavailable") from error
 
-            client = OpenAI(api_key=self._api_key.get_secret_value(), max_retries=0)
+        try:
+            client = OpenAI(
+                api_key=self._api_key.get_secret_value(),
+                max_retries=0,
+                timeout=self._timeout_seconds,
+            )
             response = client.responses.parse(
                 model=self._model_id,
                 instructions=PRODUCTION_SYSTEM_INSTRUCTIONS,
-                input=render_user_input(package),
+                input=render_production_user_input(package),
                 text_format=ProductionAnswer,
                 text={"verbosity": self._verbosity},
                 max_output_tokens=self._max_output_tokens,
@@ -94,6 +107,8 @@ class OpenAIProductionProvider:
             pricing = pricing_for_model(self._model_id)
         except MalformedGeneratedOutput:
             raise
+        except APITimeoutError as error:
+            raise ProviderTimeoutError("generation provider timed out") from error
         except ValidationError as error:
             raise MalformedGeneratedOutput("provider output violated production schema") from error
         except Exception as error:

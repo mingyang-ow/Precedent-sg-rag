@@ -42,13 +42,20 @@ the model cannot override the passage displayed by the application.
 | --- | --- | --- |
 | Historical prompt | `rag-v2` / `29fa0688...3446be` | Frozen Phase 3 evaluation |
 | Historical schema | `GroundedAnswer` / `61e54fb6...87eeb` | Generated verbatim quotations |
-| Production prompt | `rag-production-v1` / `91557588...7328a` | Same answerability semantics; evidence references only |
+| Production prompt | `rag-production-v2` / `b4aacdd6...064a3e` | Untrusted query/evidence envelope; evidence references only |
 | Production schema | `production-citation-v1` / `4ca7a25a...be65` | Application-resolved citations |
 
 The production prompt preserves the `rag-v2` distinction between identifying relevant authority
 and proving that the client's facts satisfy the rule. Relevant authority with unresolved factual
 application still receives an answer with a limitation; absent, unrelated, ambiguous, or too-weak
 evidence requires abstention.
+
+Phase 7.5 revised only the never-executed production prompt. It explicitly treats the user query
+and every evidence field as untrusted data that cannot supply instructions, authorize tools,
+change the output schema, or request secrets or internal configuration. The deterministic provider
+input nests the query and ordered evidence beneath `untrusted_data` in JSON, so malicious JSON-like
+text remains a string value. This is defense-in-depth, not a claim that prompting prevents every
+semantic injection.
 
 No production inference artifact or run signature exists yet. A future model execution must freeze
 the new prompt, schema, evidence, settings, and evaluation labels under a new run signature. It
@@ -127,5 +134,6 @@ with referential-integrity checks.
 The resolver proves provenance, not semantic entailment. Claim-support evaluation remains a
 separate concern; Phase 4 does not introduce an LLM judge, embeddings, or fuzzy matching. The
 frozen `EvidencePackage` is the current storage boundary rather than a database-backed evidence
-service. Phase 5 adds provider abstraction and HTTP error mapping. Persistence, caching, and
-deployment remain Phase 6 work; request authentication remains a later product decision.
+service. The API now adds service authentication and resource controls around this boundary.
+Semantic claim-support evaluation remains Phase 7.6 work and does not replace the deterministic
+resolver.

@@ -81,7 +81,9 @@ require exact rankings, case/evidence IDs, and zero-tolerance score equivalence.
 
 At startup the service reads only this bundle. It checks the canonical manifest, compatibility
 versions, compressed-file digests, decompressed-payload digests, exact-passage digests, document
-alignment, BM25 parameters, and BM25 structural invariants. Missing, corrupt, or incompatible
+alignment, BM25 parameters, and BM25 structural invariants. Manifest file names are fixed, path
+traversal names are rejected, symlinked bundle/manifests/artifact files are rejected, and NumPy
+loads retain `allow_pickle=False`. Missing, corrupt, or incompatible
 state is never rebuilt. The process remains live (`/health` returns 200), while `/ready` returns
 503 with `status: not_ready` and `/retrieve` returns a safe 503 error. Client responses do not
 contain artifact paths or validation internals.
@@ -98,7 +100,8 @@ uv run uvicorn sg_legal_rag.api.app:app --host 127.0.0.1 --port 8000
 curl --fail http://127.0.0.1:8000/health
 curl --fail http://127.0.0.1:8000/ready
 curl --fail http://127.0.0.1:8000/version
-curl --fail http://127.0.0.1:8000/metrics
+curl --fail --header "X-Precedent-Metrics-Key: $PRECEDENT_METRICS_KEY" \
+  http://127.0.0.1:8000/metrics
 ```
 
 For a non-default bundle, set `PRECEDENT_RETRIEVAL_ARTIFACTS`. Startup, health, readiness, version,
@@ -111,6 +114,8 @@ docker build --tag precedent-sg-rag:local .
 docker run --rm \
   --read-only \
   --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+  --env PRECEDENT_API_KEY \
+  --env PRECEDENT_METRICS_KEY \
   --mount type=bind,src="$(pwd)/data/processed/retrieval-artifacts",dst=/opt/precedent/retrieval-artifacts,readonly \
   --publish 8000:8000 \
   precedent-sg-rag:local
@@ -122,12 +127,14 @@ Or use the equivalent single-service Compose file:
 docker compose up --build
 ```
 
-To enable `/answer`, inject a credential only at runtime; never add it to a Dockerfile, build
-argument, committed environment file, or image layer:
+Inject application, metrics, and (only when `/answer` is needed) provider credentials at runtime;
+never add them to a Dockerfile, build argument, committed environment file, or image layer:
 
 ```bash
 docker run --rm \
   --env OPENAI_API_KEY \
+  --env PRECEDENT_API_KEY \
+  --env PRECEDENT_METRICS_KEY \
   --mount type=bind,src="$(pwd)/data/processed/retrieval-artifacts",dst=/opt/precedent/retrieval-artifacts,readonly \
   --publish 8000:8000 \
   precedent-sg-rag:local
@@ -141,10 +148,12 @@ capabilities, sets `no-new-privileges`, and makes the container root filesystem 
 
 ## Verification and measurements
 
-Fixture-level build, corruption, incompatibility, no-rebuild, retrieval-equivalence, and API tests
-run in the normal Python suite. CI separately builds the image, checks its configured user, mounts
-a deterministic synthetic bundle, and exercises `/health`, `/ready`, `/metrics`, and `/retrieve`
-with no API credential. The metrics scrape requires no writable container state.
+Fixture-level build, corruption, incompatibility, symlink/path, no-rebuild,
+retrieval-equivalence, and API tests run in the normal Python suite. CI separately audits locked
+Python dependencies, builds the image, checks its configured user and absence of sentinel runtime
+credentials, mounts a deterministic synthetic bundle, and exercises public `/health` and `/ready`,
+unauthorized rejection, authorized `/metrics`, and authorized `/retrieve`. The scrape requires no
+writable container state and no provider call.
 
 Measured on the development host on 27 August 2026, using the complete pinned corpus:
 
@@ -179,6 +188,7 @@ executed build.
 ## Operational limits
 
 Artifacts are immutable during serving but are still deployed as local files rather than through
-an artifact registry. Evidence IDs remain package-local. A persistent production evidence store,
-authentication, formal monitoring, multi-worker memory analysis, and rollout/rollback automation
-remain future work.
+an artifact registry. Evidence IDs remain package-local. Authentication is a shared service key,
+not user identity. Distributed rate limiting, formal monitoring, multi-worker memory analysis, and
+rollout/rollback automation remain future work. See [`security.md`](security.md) for the complete
+threat model and residual risks.

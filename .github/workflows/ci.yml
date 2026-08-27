@@ -20,6 +20,8 @@ jobs:
         run: uv python install 3.12
       - name: Install project
         run: uv sync --locked --extra dev --extra generation --extra api --python 3.12
+      - name: Audit Python dependencies
+        run: uv run pip-audit --skip-editable
       - name: Lint
         run: uv run ruff check .
       - name: Check formatting
@@ -30,6 +32,9 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     needs: quality
+    env:
+      PRECEDENT_CI_API_KEY: precedent-ci-service-key-123
+      PRECEDENT_CI_METRICS_KEY: precedent-ci-metrics-key-456
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -48,12 +53,22 @@ jobs:
             -exec stat --format='%A %a %u:%g %n' {} +
       - name: Build image
         run: docker build --tag precedent-sg-rag:ci .
+      - name: Verify runtime credentials are absent from image metadata
+        run: |
+          docker image inspect precedent-sg-rag:ci > /tmp/image-inspect.json
+          docker history --no-trunc precedent-sg-rag:ci > /tmp/image-history.txt
+          ! grep --fixed-strings "$PRECEDENT_CI_API_KEY" /tmp/image-inspect.json
+          ! grep --fixed-strings "$PRECEDENT_CI_API_KEY" /tmp/image-history.txt
+          ! grep --fixed-strings "$PRECEDENT_CI_METRICS_KEY" /tmp/image-inspect.json
+          ! grep --fixed-strings "$PRECEDENT_CI_METRICS_KEY" /tmp/image-history.txt
       - name: Verify configured user is non-root
         run: test "$(docker image inspect precedent-sg-rag:ci --format '{{.Config.User}}')" = "10001:10001"
       - name: Start read-only service
         run: >-
           docker run --detach --name precedent-ci --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m
           --volume /tmp/precedent-artifacts:/opt/precedent/retrieval-artifacts:ro
+          --env PRECEDENT_API_KEY="$PRECEDENT_CI_API_KEY"
+          --env PRECEDENT_METRICS_KEY="$PRECEDENT_CI_METRICS_KEY"
           --publish 8000:8000 precedent-sg-rag:ci
       - name: Verify non-root artifact access
         run: |
@@ -91,12 +106,26 @@ jobs:
           test "$ready_status" = 200
           curl --fail --silent --show-error http://127.0.0.1:8000/health
           grep --quiet '"retrieval":true' /tmp/ready.json
+          unauthenticated_retrieve_status="$(curl --silent --show-error \
+            --output /tmp/unauthenticated-retrieve.json --write-out '%{http_code}' \
+            --header 'Content-Type: application/json' \
+            --data '{"facts":"objective contract","top_k":1}' \
+            http://127.0.0.1:8000/retrieve)"
+          test "$unauthenticated_retrieve_status" = 401
+          grep --quiet '"code":"authentication_failed"' /tmp/unauthenticated-retrieve.json
+          unauthenticated_metrics_status="$(curl --silent --show-error \
+            --output /tmp/unauthenticated-metrics.json --write-out '%{http_code}' \
+            http://127.0.0.1:8000/metrics)"
+          test "$unauthenticated_metrics_status" = 401
+          grep --quiet '"code":"authentication_failed"' /tmp/unauthenticated-metrics.json
           curl --fail --silent --show-error --output /tmp/metrics.txt \
+            --header "X-Precedent-Metrics-Key: $PRECEDENT_CI_METRICS_KEY" \
             http://127.0.0.1:8000/metrics
           grep --quiet '^precedent_http_requests_total' /tmp/metrics.txt
           grep --quiet '^precedent_retrieval_ready 1.0$' /tmp/metrics.txt
           grep --quiet '^precedent_retrieval_documents ' /tmp/metrics.txt
           curl --fail --silent --show-error --header 'Content-Type: application/json' \
+            --header "X-Precedent-API-Key: $PRECEDENT_CI_API_KEY" \
             --data '{"facts":"objective contract","top_k":1}' \
             http://127.0.0.1:8000/retrieve | grep --quiet '"case_id":"case:0"'
       - name: Show safe diagnostics on failure

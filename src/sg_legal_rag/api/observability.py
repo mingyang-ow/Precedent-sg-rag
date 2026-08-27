@@ -55,6 +55,8 @@ def install_request_middleware(app: FastAPI, metrics: ApiMetrics) -> None:
             response = await call_next(request)
             status_code = response.status_code
             response.headers[REQUEST_ID_HEADER] = request_id
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["Cache-Control"] = "no-store"
             return response
         finally:
             duration_seconds = time.perf_counter() - started
