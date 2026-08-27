@@ -27,8 +27,16 @@ from .adjudication import (
     load_pilot_adjudication,
 )
 from .behaviour_pilot import (
+    BehaviourAdjudication,
+    BehaviourPilotManifest,
+    FrozenBehaviourPackages,
+    apply_behaviour_labels,
+    behaviour_adjudication_digest,
+    behaviour_run_signature,
+    canonical_digest,
     load_behaviour_adjudication,
     load_behaviour_pilot,
+    load_frozen_behaviour_packages,
     validate_behaviour_pilot,
 )
 from .evaluation import evaluate_record, grouped_summaries
@@ -64,6 +72,9 @@ DEFAULT_BEHAVIOUR_ADJUDICATION = (
     PROJECT_ROOT / "experiments" / "samples" / "rag_behaviour_adjudication.json"
 )
 DEFAULT_BEHAVIOUR_PILOT = PROJECT_ROOT / "experiments" / "samples" / "rag_behaviour_pilot.json"
+DEFAULT_BEHAVIOUR_PACKAGES = (
+    PROJECT_ROOT / "experiments" / "samples" / "rag_behaviour_packages.json"
+)
 DEFAULT_OUTPUT = PROJECT_ROOT / "experiments" / "results" / "rag_baseline.json"
 DEFAULT_CACHE = PROJECT_ROOT / "data" / "processed" / "generation"
 DEFAULT_MANUAL_REVIEW = PROJECT_ROOT / "data" / "processed" / "rag_manual_review.json"
@@ -197,6 +208,21 @@ def _config_signature_payload(config: RAGConfig) -> dict[str, Any]:
     }
 
 
+def _signature_from_evidence_signature(
+    config: RAGConfig,
+    evidence_signature: str,
+    *,
+    pilot_ground_truth_digest: str,
+) -> str:
+    payload = {
+        "cache_schema": 4,
+        "config": _config_signature_payload(config),
+        "evidence_signature": evidence_signature,
+        "pilot_ground_truth_digest": pilot_ground_truth_digest,
+    }
+    return _canonical_digest(payload)[:24]
+
+
 def _signature(
     config: RAGConfig,
     packages: tuple[EvidencePackage, ...],
@@ -204,13 +230,11 @@ def _signature(
     pilot_ground_truth_digest: str,
 ) -> str:
     frozen_evidence = evidence_freeze(packages)
-    payload = {
-        "cache_schema": 4,
-        "config": _config_signature_payload(config),
-        "evidence_signature": frozen_evidence["signature"],
-        "pilot_ground_truth_digest": pilot_ground_truth_digest,
-    }
-    return _canonical_digest(payload)[:24]
+    return _signature_from_evidence_signature(
+        config,
+        frozen_evidence["signature"],
+        pilot_ground_truth_digest=pilot_ground_truth_digest,
+    )
 
 
 def _tokenizer(model: str) -> tuple[Any, str]:
@@ -503,6 +527,22 @@ def audit_packages(
     }
 
 
+def generation_contract(config: RAGConfig) -> dict[str, Any]:
+    return {
+        "prompt_version": config.settings.prompt_version,
+        "prompt_signature": hashlib.sha256(SYSTEM_INSTRUCTIONS.encode("utf-8")).hexdigest(),
+        "output_schema_signature": _canonical_digest(GroundedAnswer.model_json_schema()),
+        "model": config.settings.model,
+        "reasoning_effort": config.settings.reasoning_effort,
+        "verbosity": config.settings.verbosity,
+        "max_output_tokens": config.settings.max_output_tokens,
+        "temperature": config.settings.temperature,
+        "seed": config.settings.seed,
+        "top_ks": list(config.top_ks),
+        "automatic_retries": config.automatic_retries,
+    }
+
+
 def build_manifest(
     *,
     config: RAGConfig,
@@ -537,19 +577,7 @@ def build_manifest(
         "seed": None,
         "reasoning_effort": config.settings.reasoning_effort,
         "automatic_retries": config.automatic_retries,
-        "generation_contract": {
-            "prompt_version": config.settings.prompt_version,
-            "prompt_signature": hashlib.sha256(SYSTEM_INSTRUCTIONS.encode("utf-8")).hexdigest(),
-            "output_schema_signature": _canonical_digest(GroundedAnswer.model_json_schema()),
-            "model": config.settings.model,
-            "reasoning_effort": config.settings.reasoning_effort,
-            "verbosity": config.settings.verbosity,
-            "max_output_tokens": config.settings.max_output_tokens,
-            "temperature": config.settings.temperature,
-            "seed": config.settings.seed,
-            "top_ks": list(config.top_ks),
-            "automatic_retries": config.automatic_retries,
-        },
+        "generation_contract": generation_contract(config),
         "selection": {
             "seed": config.seed,
             "queries_per_mode_per_stratum": config.queries_per_stratum,
@@ -634,6 +662,203 @@ def assert_frozen_manifest(frozen: dict[str, Any], rebuilt: dict[str, Any]) -> N
         raise ValueError("frozen manifest does not contain an evidence signature")
     if frozen_evidence != rebuilt_evidence:
         raise ValueError("frozen evidence signature mismatch before API generation")
+
+
+def _frozen_locks(global_manifest: dict[str, Any]) -> tuple[dict[str, Any], ...]:
+    evidence = global_manifest.get("evidence_freeze")
+    if not isinstance(evidence, dict):
+        raise TypeError("global manifest lacks frozen evidence metadata")
+    locks = evidence.get("packages")
+    if not isinstance(locks, list) or not all(isinstance(lock, dict) for lock in locks):
+        raise TypeError("global manifest lacks frozen package locks")
+    signature = evidence.get("signature")
+    if signature != _canonical_digest(locks):
+        raise ValueError("global frozen evidence digest mismatch")
+    return tuple(locks)
+
+
+def _assert_global_manifest_preflight(
+    global_manifest: dict[str, Any], config: RAGConfig
+) -> tuple[dict[str, Any], ...]:
+    if global_manifest.get("schema_version") != 4:
+        raise ValueError("global manifest schema version changed")
+    if global_manifest.get("generation_contract") != generation_contract(config):
+        raise ValueError("frozen generation contract changed")
+    if global_manifest.get("model") != config.settings.model:
+        raise ValueError("frozen model changed")
+    if global_manifest.get("automatic_retries") != 0 or config.automatic_retries != 0:
+        raise ValueError("automatic retries must remain disabled")
+
+    locks = _frozen_locks(global_manifest)
+    generation_plan = global_manifest.get("generation_plan")
+    if not isinstance(generation_plan, dict):
+        raise TypeError("global manifest lacks generation plan")
+    package_ids = generation_plan.get("package_ids")
+    lock_ids = [lock.get("package_id") for lock in locks]
+    if package_ids != lock_ids:
+        raise ValueError("global frozen package IDs or ordering changed")
+
+    pilot = global_manifest.get("pilot")
+    if not isinstance(pilot, dict):
+        raise TypeError("global manifest lacks pilot metadata")
+    ground_truth = pilot.get("ground_truth")
+    if not isinstance(ground_truth, dict) or not isinstance(ground_truth.get("digest"), str):
+        raise TypeError("global manifest lacks pilot ground-truth digest")
+    expected_signature = _signature_from_evidence_signature(
+        config,
+        str(global_manifest["evidence_freeze"]["signature"]),
+        pilot_ground_truth_digest=ground_truth["digest"],
+    )
+    if global_manifest.get("run_signature") != expected_signature:
+        raise ValueError("global run signature mismatch")
+    return locks
+
+
+def validate_frozen_behaviour_execution(
+    *,
+    config: RAGConfig,
+    global_manifest: dict[str, Any],
+    pilot: BehaviourPilotManifest,
+    adjudication: BehaviourAdjudication,
+    answer_adjudication: PilotAdjudication,
+    frozen_packages: FrozenBehaviourPackages,
+) -> tuple[tuple[EvidencePackage, ...], tuple[EvidencePackage, ...]]:
+    """Verify the input-only pilot artifact without rebuilding retrieval."""
+
+    locks = _assert_global_manifest_preflight(global_manifest, config)
+    if pilot.global_manifest_schema_version != global_manifest["schema_version"]:
+        raise ValueError("behaviour pilot global manifest schema changed")
+    if pilot.global_run_signature != global_manifest["run_signature"]:
+        raise ValueError("behaviour pilot global run signature changed")
+    if pilot.global_evidence_digest != global_manifest["evidence_freeze"]["signature"]:
+        raise ValueError("behaviour pilot global evidence digest changed")
+    if pilot.generation_contract != generation_contract(config):
+        raise ValueError("behaviour pilot generation contract changed")
+    if pilot.pilot_version != adjudication.pilot_version:
+        raise ValueError("behaviour pilot version mismatch")
+    if pilot.adjudication_version != adjudication.adjudication_version:
+        raise ValueError("behaviour adjudication version mismatch")
+
+    adjudication_digest_value = behaviour_adjudication_digest(adjudication)
+    if pilot.adjudication_digest != adjudication_digest_value:
+        raise ValueError("behaviour adjudication digest mismatch")
+    if adjudication_digest(answer_adjudication) != pilot.answer_pilot_adjudication_digest:
+        raise ValueError("answer-only pilot adjudication changed")
+    if answer_adjudication.adjudication_version != pilot.answer_pilot_adjudication_version:
+        raise ValueError("answer-only pilot adjudication version changed")
+    if answer_adjudication.pilot_evidence_signature != pilot.answer_pilot_evidence_digest:
+        raise ValueError("answer-only pilot evidence changed")
+
+    if frozen_packages.pilot_version != pilot.pilot_version:
+        raise ValueError("frozen package pilot version mismatch")
+    if frozen_packages.run_signature != pilot.run_signature:
+        raise ValueError("frozen package run signature mismatch")
+    selected_ids = pilot.selected_package_ids
+    if adjudication.selected_package_ids != selected_ids:
+        raise ValueError("behaviour adjudication package IDs or ordering changed")
+    if frozen_packages.selected_package_ids != selected_ids:
+        raise ValueError("frozen execution package IDs or ordering changed")
+    if len(frozen_packages.packages) != 12:
+        raise ValueError("frozen behaviour execution requires exactly 12 packages")
+    if tuple(package.package_id for package in frozen_packages.packages) != selected_ids:
+        raise ValueError("frozen execution package IDs or ordering changed")
+
+    locks_by_id = {str(lock.get("package_id")): lock for lock in locks}
+    try:
+        selected_locks = [locks_by_id[package_id] for package_id in selected_ids]
+    except KeyError as error:
+        raise ValueError(
+            f"frozen execution package is absent from global locks: {error}"
+        ) from error
+    if canonical_digest(selected_locks) != pilot.evidence_digest:
+        raise ValueError("behaviour pilot evidence digest mismatch")
+    for package, expected_lock in zip(frozen_packages.packages, selected_locks, strict=True):
+        if package_evidence_lock(package) != expected_lock:
+            raise ValueError(f"frozen package evidence or input changed: {package.package_id}")
+
+    reviews_by_id = {
+        record.package_id: record
+        for record in adjudication.reviewed_candidates + adjudication.oracle_reviews
+    }
+    raw_packages = frozen_packages.packages
+    for package in raw_packages:
+        record = reviews_by_id.get(package.package_id)
+        if record is None:
+            raise ValueError(f"frozen package lacks adjudication: {package.package_id}")
+        if (
+            package.query_mode != record.query_mode
+            or package.condition is not record.condition
+            or package.top_k != record.top_k
+            or package.target_present != record.target_present
+        ):
+            raise ValueError(f"review metadata changed: {package.package_id}")
+        evidence_ids = {item.evidence_id for item in package.evidence}
+        if not set(record.supporting_evidence_ids).issubset(evidence_ids):
+            raise ValueError(f"review cites unknown evidence: {package.package_id}")
+    labeled_packages = tuple(
+        apply_behaviour_labels(package, reviews_by_id) for package in raw_packages
+    )
+    counts = {
+        "expected_actions": dict(
+            sorted(Counter(package.expected_action.value for package in labeled_packages).items())
+        ),
+        "query_modes": dict(
+            sorted(Counter(package.query_mode for package in labeled_packages).items())
+        ),
+        "conditions": dict(
+            sorted(Counter(package.condition.value for package in labeled_packages).items())
+        ),
+        "top_k": dict(
+            sorted(
+                Counter(
+                    "oracle" if package.top_k is None else str(package.top_k)
+                    for package in labeled_packages
+                ).items()
+            )
+        ),
+    }
+    if counts != pilot.counts:
+        raise ValueError("behaviour pilot counts changed")
+
+    expected_run_signature = behaviour_run_signature(
+        global_run_signature=pilot.global_run_signature,
+        adjudication_digest_value=adjudication_digest_value,
+        evidence_digest=pilot.evidence_digest,
+    )
+    if pilot.run_signature != expected_run_signature:
+        raise ValueError("behaviour pilot run signature changed")
+    return raw_packages, labeled_packages
+
+
+def preflight_frozen_behaviour_execution(
+    *,
+    rag_config_path: Path,
+    global_manifest_path: Path,
+    behaviour_manifest_path: Path,
+    behaviour_packages_path: Path,
+    behaviour_adjudication_path: Path,
+    answer_adjudication_path: Path,
+) -> tuple[
+    RAGConfig,
+    BehaviourPilotManifest,
+    tuple[EvidencePackage, ...],
+    tuple[EvidencePackage, ...],
+]:
+    config = load_config(rag_config_path)
+    global_manifest = load_json(global_manifest_path)
+    pilot = load_behaviour_pilot(behaviour_manifest_path)
+    frozen_packages = load_frozen_behaviour_packages(behaviour_packages_path)
+    adjudication = load_behaviour_adjudication(behaviour_adjudication_path)
+    answer_adjudication = load_pilot_adjudication(answer_adjudication_path)
+    raw_packages, labeled_packages = validate_frozen_behaviour_execution(
+        config=config,
+        global_manifest=global_manifest,
+        pilot=pilot,
+        adjudication=adjudication,
+        answer_adjudication=answer_adjudication,
+        frozen_packages=frozen_packages,
+    )
+    return config, pilot, raw_packages, labeled_packages
 
 
 def write_json(path: Path, payload: Any) -> None:
@@ -757,6 +982,27 @@ def all_generation_attempts_failed(
     )
 
 
+def assert_cached_record_matches_execution(
+    record: GenerationRecord,
+    *,
+    package: EvidencePackage,
+    settings: GenerationSettings,
+    run_signature: str,
+) -> None:
+    if record.run_signature != run_signature:
+        raise ValueError("cached generation run signature changed")
+    if record.package != package:
+        raise ValueError(f"cached generation package changed: {package.package_id}")
+    if record.prompt_version != settings.prompt_version:
+        raise ValueError(f"cached prompt version changed: {package.package_id}")
+    if record.system_instructions != SYSTEM_INSTRUCTIONS:
+        raise ValueError(f"cached system instructions changed: {package.package_id}")
+    if record.user_input != render_user_input(package):
+        raise ValueError(f"cached rendered input changed: {package.package_id}")
+    if record.settings != settings:
+        raise ValueError(f"cached generation settings changed: {package.package_id}")
+
+
 def prepare(
     *, data_dir: Path, splits: Path, corpus_config_path: Path, rag_config_path: Path
 ) -> tuple[
@@ -828,14 +1074,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=DEFAULT_BEHAVIOUR_ADJUDICATION,
     )
     parser.add_argument("--behaviour-manifest", type=Path, default=DEFAULT_BEHAVIOUR_PILOT)
+    parser.add_argument("--behaviour-packages", type=Path, default=DEFAULT_BEHAVIOUR_PACKAGES)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE)
     parser.add_argument("--manual-review", type=Path, default=DEFAULT_MANUAL_REVIEW)
     parser.add_argument("--sufficiency-review", type=Path, default=DEFAULT_SUFFICIENCY_REVIEW)
-    parser.add_argument(
+    execution = parser.add_mutually_exclusive_group()
+    execution.add_argument(
         "--execute",
         action="store_true",
         help="make usage-billed API requests; omit for the safe offline preparation default",
+    )
+    execution.add_argument(
+        "--reconstruct-and-verify",
+        action="store_true",
+        help="rebuild retrieval and compare it with frozen artifacts without provider access",
+    )
+    execution.add_argument(
+        "--preflight-only",
+        action="store_true",
+        help="verify frozen behavioural inputs and stop before provider construction",
     )
     scope = parser.add_mutually_exclusive_group()
     scope.add_argument(
@@ -862,68 +1120,127 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        frozen_manifest = load_json(args.manifest) if args.execute else None
-        config, selected, packages, methodology_audit = prepare(
-            data_dir=args.data_dir,
-            splits=args.splits,
-            corpus_config_path=args.corpus_config,
-            rag_config_path=args.config,
-        )
-        pilot = select_pilot(packages)
-        adjudication = load_pilot_adjudication(args.pilot_adjudication)
-        labeled_pilot, pilot_ground_truth = validate_pilot_adjudication(adjudication, pilot)
-        signature = _signature(
-            config,
-            packages,
-            pilot_ground_truth_digest=pilot_ground_truth["digest"],
-        )
-        canary = select_canary(packages)
-        manifest = build_manifest(
-            config=config,
-            signature=signature,
-            selected=selected,
-            packages=packages,
-            pilot=pilot,
-            canary=canary,
-            methodology_audit=methodology_audit,
-            pilot_ground_truth=pilot_ground_truth,
-        )
-        behaviour_manifest = None
+        if args.preflight_only and not args.behaviour_pilot:
+            raise ValueError("--preflight-only requires --behaviour-pilot")
+
+        direct_behaviour = args.behaviour_pilot and (args.execute or args.preflight_only)
+        frozen_manifest: dict[str, Any] | None
+        behaviour_manifest: BehaviourPilotManifest | None = None
         behaviour_targets: tuple[EvidencePackage, ...] = ()
         labeled_behaviour_targets: tuple[EvidencePackage, ...] = ()
-        if args.behaviour_pilot:
-            behaviour_adjudication = load_behaviour_adjudication(args.behaviour_adjudication)
-            behaviour_manifest = load_behaviour_pilot(args.behaviour_manifest)
-            behaviour_targets, labeled_behaviour_targets = validate_behaviour_pilot(
-                adjudication=behaviour_adjudication,
-                pilot=behaviour_manifest,
-                packages=packages,
-                global_manifest=frozen_manifest if frozen_manifest is not None else manifest,
-                answer_adjudication=adjudication,
+        if direct_behaviour:
+            frozen_manifest = load_json(args.manifest)
+            (
+                config,
+                behaviour_manifest,
+                behaviour_targets,
+                labeled_behaviour_targets,
+            ) = preflight_frozen_behaviour_execution(
+                rag_config_path=args.config,
+                global_manifest_path=args.manifest,
+                behaviour_manifest_path=args.behaviour_manifest,
+                behaviour_packages_path=args.behaviour_packages,
+                behaviour_adjudication_path=args.behaviour_adjudication,
+                answer_adjudication_path=args.pilot_adjudication,
             )
-        print(
-            f"planned requests: {len(packages)}; pilot: {len(pilot)}; "
-            f"canary: 1; run signature: {signature}"
-        )
-        if not args.execute:
-            write_json(args.manifest, manifest)
-            write_json(args.sufficiency_review, sufficiency_review_template(packages))
-            print(f"wrote offline manifest {args.manifest}")
-            print(f"wrote private sufficiency-review queue {args.sufficiency_review}")
-            print("offline preparation complete; no API requests made")
-            return 0
+            manifest = frozen_manifest
+            packages = behaviour_targets
+            pilot: tuple[EvidencePackage, ...] = ()
+            labeled_pilot: tuple[EvidencePackage, ...] = ()
+            adjudication = load_pilot_adjudication(args.pilot_adjudication)
+            pilot_ground_truth: dict[str, Any] = {}
+            signature = behaviour_manifest.global_run_signature
+            canary: EvidencePackage | None = None
+            print(
+                "verified 12 frozen behavioural packages, protocol, adjudication, and run "
+                f"signature: {behaviour_manifest.run_signature}"
+            )
+            if args.preflight_only:
+                print("frozen behavioural preflight complete; provider was not constructed")
+                return 0
+        else:
+            frozen_manifest = (
+                load_json(args.manifest) if args.execute or args.reconstruct_and_verify else None
+            )
+            config, selected, packages, methodology_audit = prepare(
+                data_dir=args.data_dir,
+                splits=args.splits,
+                corpus_config_path=args.corpus_config,
+                rag_config_path=args.config,
+            )
+            pilot = select_pilot(packages)
+            adjudication = load_pilot_adjudication(args.pilot_adjudication)
+            labeled_pilot, pilot_ground_truth = validate_pilot_adjudication(adjudication, pilot)
+            signature = _signature(
+                config,
+                packages,
+                pilot_ground_truth_digest=pilot_ground_truth["digest"],
+            )
+            canary = select_canary(packages)
+            manifest = build_manifest(
+                config=config,
+                signature=signature,
+                selected=selected,
+                packages=packages,
+                pilot=pilot,
+                canary=canary,
+                methodology_audit=methodology_audit,
+                pilot_ground_truth=pilot_ground_truth,
+            )
+            if args.behaviour_pilot:
+                behaviour_adjudication = load_behaviour_adjudication(args.behaviour_adjudication)
+                behaviour_manifest = load_behaviour_pilot(args.behaviour_manifest)
+                behaviour_targets, labeled_behaviour_targets = validate_behaviour_pilot(
+                    adjudication=behaviour_adjudication,
+                    pilot=behaviour_manifest,
+                    packages=packages,
+                    global_manifest=(frozen_manifest if frozen_manifest is not None else manifest),
+                    answer_adjudication=adjudication,
+                )
+            print(
+                f"planned requests: {len(packages)}; pilot: {len(pilot)}; "
+                f"canary: 1; run signature: {signature}"
+            )
+            if args.reconstruct_and_verify:
+                assert frozen_manifest is not None
+                assert_frozen_manifest(frozen_manifest, manifest)
+                if args.behaviour_pilot:
+                    assert behaviour_manifest is not None
+                    frozen_packages = load_frozen_behaviour_packages(args.behaviour_packages)
+                    direct_raw, _ = validate_frozen_behaviour_execution(
+                        config=config,
+                        global_manifest=frozen_manifest,
+                        pilot=behaviour_manifest,
+                        adjudication=behaviour_adjudication,
+                        answer_adjudication=adjudication,
+                        frozen_packages=frozen_packages,
+                    )
+                    if direct_raw != behaviour_targets:
+                        raise ValueError(
+                            "frozen behaviour packages differ from reconstructed packages"
+                        )
+                print("full reconstruction matches frozen artifacts; no API requests made")
+                return 0
+            if not args.execute:
+                write_json(args.manifest, manifest)
+                write_json(args.sufficiency_review, sufficiency_review_template(packages))
+                print(f"wrote offline manifest {args.manifest}")
+                print(f"wrote private sufficiency-review queue {args.sufficiency_review}")
+                print("offline preparation complete; no API requests made")
+                return 0
 
-        assert frozen_manifest is not None
-        assert_frozen_manifest(frozen_manifest, manifest)
-        print(
-            "verified frozen protocol and evidence signature before API generation: "
-            f"{manifest['evidence_freeze']['signature']}"
-        )
+            assert frozen_manifest is not None
+            assert_frozen_manifest(frozen_manifest, manifest)
+            print(
+                "verified frozen protocol and evidence signature before API generation: "
+                f"{manifest['evidence_freeze']['signature']}"
+            )
+
         targets = (
             behaviour_targets
             if args.behaviour_pilot
             else (canary,)
-            if args.canary
+            if args.canary and canary is not None
             else pilot
             if args.pilot
             else packages
@@ -931,7 +1248,7 @@ def main(argv: list[str] | None = None) -> int:
         execution_signature = (
             behaviour_manifest.run_signature if behaviour_manifest is not None else signature
         )
-        generator = OpenAIResponsesGenerator()
+        generator: OpenAIResponsesGenerator | None = None
         records: list[GenerationRecord] = []
         attempted_records: list[GenerationRecord] = []
         for position, package in enumerate(targets, start=1):
@@ -942,8 +1259,16 @@ def main(argv: list[str] | None = None) -> int:
                 package_id=package.package_id,
             )
             if cached is not None and not (args.retry_errors and cached.result.error is not None):
+                assert_cached_record_matches_execution(
+                    cached,
+                    package=package,
+                    settings=config.settings,
+                    run_signature=execution_signature,
+                )
                 record = cached
             else:
+                if generator is None:
+                    generator = OpenAIResponsesGenerator()
                 record = generate_record(
                     generator,
                     package,

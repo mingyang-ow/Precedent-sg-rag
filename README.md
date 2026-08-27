@@ -56,6 +56,10 @@ uv run sg-legal-corpus-repair --representation passages --retriever bm25 \
 uv sync --extra dev --extra generation
 # Offline preparation only; no API request is made without the explicit --execute flag.
 uv run sg-legal-rag-evaluate
+# Fast integrity check of the frozen 12-record behavioral input artifact; no provider is created.
+uv run sg-legal-rag-evaluate --preflight-only --behaviour-pilot
+# Slow end-to-end retrieval reconstruction audit; also makes no provider calls.
+uv run sg-legal-rag-evaluate --reconstruct-and-verify --behaviour-pilot
 uv run pytest
 ```
 

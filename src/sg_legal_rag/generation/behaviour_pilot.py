@@ -162,12 +162,42 @@ class BehaviourPilotManifest(BaseModel):
     metric_plan: dict[str, Any]
 
 
+class FrozenBehaviourPackages(BaseModel):
+    """Input-only execution artifact for the frozen behavioural pilot."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal[1]
+    pilot_version: Literal["pilot-behaviour-v1"]
+    run_signature: str = Field(pattern=r"^[0-9a-f]{24}$")
+    selected_package_ids: tuple[str, ...] = Field(min_length=12, max_length=12)
+    package_payload_digest_algorithm: Literal["sha256-canonical-json-v1"]
+    package_payload_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    packages: tuple[EvidencePackage, ...] = Field(min_length=12, max_length=12)
+
+    @model_validator(mode="after")
+    def validate_payload(self) -> FrozenBehaviourPackages:
+        package_ids = tuple(package.package_id for package in self.packages)
+        if len(set(package_ids)) != 12:
+            raise ValueError("frozen behaviour packages must contain 12 unique package IDs")
+        if package_ids != self.selected_package_ids:
+            raise ValueError("frozen behaviour package ordering changed")
+        payload = [package.model_dump(mode="json") for package in self.packages]
+        if canonical_digest(payload) != self.package_payload_digest:
+            raise ValueError("frozen behaviour package payload digest mismatch")
+        return self
+
+
 def load_behaviour_adjudication(path: Path) -> BehaviourAdjudication:
     return BehaviourAdjudication.model_validate_json(path.read_text(encoding="utf-8"))
 
 
 def load_behaviour_pilot(path: Path) -> BehaviourPilotManifest:
     return BehaviourPilotManifest.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+def load_frozen_behaviour_packages(path: Path) -> FrozenBehaviourPackages:
+    return FrozenBehaviourPackages.model_validate_json(path.read_text(encoding="utf-8"))
 
 
 def behaviour_adjudication_digest(adjudication: BehaviourAdjudication) -> str:

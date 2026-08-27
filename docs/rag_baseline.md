@@ -71,11 +71,13 @@ Facts-only is the primary product-facing diagnostic. Facts-plus-principle is ret
 assisted-query comparison, not as evidence available to a real user at prediction time.
 
 The schema-v4 manifest at `experiments/samples/rag_baseline.json` preserves query IDs, strata,
-conditions, depths, the run signature, and cost forecast without redistributing prompt passages.
-It also freezes evidence origin and gold-row provenance, expected-action labels, ordered passage
-digests, per-package model-visible evidence signatures, exact rendered-input signatures, and one
-global evidence signature. Before constructing an API client, the execution path reconstructs and
-compares the full frozen protocol and evidence lock.
+conditions, depths, the run signature, cost forecast, evidence origin and gold-row provenance,
+expected-action labels, ordered passage digests, per-package model-visible evidence signatures,
+exact rendered-input signatures, and one global evidence signature. The input-only
+`experiments/samples/rag_behaviour_packages.json` artifact separately preserves the 12 complete,
+ordered package payloads needed for behavioral-pilot inference. It contains no provider outputs.
+The fast execution path validates those payloads against the manifest locks and signatures before
+provider construction; full retrieval reconstruction remains a separate reproducibility audit.
 Full prompts, evidence, outputs, provider metadata, latency, token use, and estimated cost are
 cached per record under ignored `data/processed/generation/` paths.
 
@@ -252,8 +254,21 @@ The billed path requires the explicit `--execute` flag. It must not be used unti
 has been approved. `--canary` restricts that path to the manually verified Ahmed Salim
 `oracle_gold_context` package `0362866e90548d293669f8d3`; `--pilot` restricts it to the fixed
 12-record answer-only pilot; and `--behaviour-pilot` restricts it to the separate frozen balanced
-pilot. Before creating the API client, execution reconstructs and verifies the global evidence,
-selected evidence, and blind ground-truth digests. No inference is authorized by this adjudication.
+pilot. Behavioral-pilot execution loads only its 12 input-only packages, then verifies package
+count and order, model-visible evidence and rendered-input signatures, prompt and output schema,
+model and generation settings, global and selected evidence digests, both adjudication bindings,
+and the run signature before provider construction. A safe dry preflight is:
+
+```bash
+uv run sg-legal-rag-evaluate --preflight-only --behaviour-pilot
+```
+
+The expensive end-to-end reproducibility audit remains available separately and never constructs
+the provider:
+
+```bash
+uv run sg-legal-rag-evaluate --reconstruct-and-verify --behaviour-pilot
+```
 
 ## Completion gate
 
