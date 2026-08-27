@@ -34,6 +34,7 @@ from sg_legal_rag.generation.semantic_judge_benchmark import (
     load_judge_reference,
     prepare_frozen_pilot,
     semantic_run_signature,
+    validate_reference_against_pilot,
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -86,11 +87,13 @@ class FakeProvider:
         *,
         unavailable: bool = False,
         unavailable_at: int | None = None,
+        incomplete_at: int | None = None,
         malformed_at: int | None = None,
         verdicts: tuple[JudgeVerdict, ...] = (),
     ) -> None:
         self.calls = 0
         self.unavailable_at = 1 if unavailable else unavailable_at
+        self.incomplete_at = incomplete_at
         self.malformed_at = malformed_at
         self.verdicts = verdicts
         self.models: list[str] = []
@@ -110,6 +113,23 @@ class FakeProvider:
                 estimated_cost_usd=None,
                 decision=None,
                 error="TimeoutError: timed out",
+            )
+        if self.calls == self.incomplete_at:
+            return JudgeProviderResult(
+                status=JudgeCallStatus.PROVIDER_INCOMPLETE,
+                requested_model=settings.model,
+                returned_model=settings.model,
+                response_id="fake-incomplete",
+                generated_at="2026-08-27T00:00:00+00:00",
+                latency_ms=1,
+                usage=None,
+                estimated_cost_usd=None,
+                decision=None,
+                error="provider interaction did not complete",
+                provider_status="incomplete",
+                incomplete_reason="max_output_tokens",
+                partial_model_output_present=True,
+                thought_content_present=True,
             )
         if self.calls == self.malformed_at:
             return JudgeProviderResult(
@@ -361,6 +381,128 @@ def test_google_adapter_classifies_malformed_decision_separately() -> None:
     assert result.error is not None and "ValidationError" in result.error
 
 
+def test_google_adapter_preserves_incomplete_diagnostics() -> None:
+    package = frozen_pilot().packages[0]
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "id": "interaction-incomplete",
+                "model": "gemini-3.5-flash-20260813",
+                "status": "incomplete",
+                "incomplete_details": {"reason": "max_output_tokens"},
+                "steps": [
+                    {
+                        "type": "thinking",
+                        "content": [{"type": "thought", "text": "bounded-presence-only"}],
+                    },
+                    {
+                        "type": "model_output",
+                        "content": [{"type": "text", "text": '{"schema_version":'}],
+                    },
+                ],
+                "usage": {
+                    "total_input_tokens": 100,
+                    "total_output_tokens": 40,
+                    "total_thought_tokens": 60,
+                    "total_tokens": 200,
+                },
+            }
+
+    class Client:
+        def post(self, *args, **kwargs):
+            return Response()
+
+    result = GoogleGeminiSemanticJudge(api_key="judge-secret", client=Client()).judge(
+        package, frozen_pilot().settings
+    )
+
+    assert result.status is JudgeCallStatus.PROVIDER_INCOMPLETE
+    assert result.provider_status == "incomplete"
+    assert result.incomplete_reason == "max_output_tokens"
+    assert result.response_id == "interaction-incomplete"
+    assert result.returned_model == "gemini-3.5-flash-20260813"
+    assert result.usage is not None
+    assert result.usage.model_dump() == {
+        "input_tokens": 100,
+        "output_tokens": 40,
+        "thought_tokens": 60,
+        "total_tokens": 200,
+    }
+    assert result.partial_model_output_present is True
+    assert result.thought_content_present is True
+    assert result.decision is None
+
+
+def test_google_adapter_does_not_fabricate_missing_incomplete_metadata() -> None:
+    package = frozen_pilot().packages[0]
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"status": "incomplete", "usage": {"total_input_tokens": 0}}
+
+    class Client:
+        def post(self, *args, **kwargs):
+            return Response()
+
+    result = GoogleGeminiSemanticJudge(api_key="judge-secret", client=Client()).judge(
+        package, frozen_pilot().settings
+    )
+
+    assert result.status is JudgeCallStatus.PROVIDER_INCOMPLETE
+    assert result.response_id is None
+    assert result.returned_model is None
+    assert result.incomplete_reason is None
+    assert result.usage is not None
+    assert result.usage.input_tokens == 0
+    assert result.usage.output_tokens is None
+    assert result.usage.thought_tokens is None
+    assert result.usage.total_tokens is None
+    assert result.partial_model_output_present is False
+    assert result.thought_content_present is False
+
+
+def test_google_adapter_keeps_timeout_as_unavailable() -> None:
+    package = frozen_pilot().packages[0]
+
+    class Client:
+        def post(self, *args, **kwargs):
+            raise TimeoutError("timed out")
+
+    result = GoogleGeminiSemanticJudge(api_key="judge-secret", client=Client()).judge(
+        package, frozen_pilot().settings
+    )
+
+    assert result.status is JudgeCallStatus.JUDGE_UNAVAILABLE
+    assert result.provider_status is None
+    assert result.usage is None
+
+
+def test_google_adapter_keeps_http_failure_as_unavailable() -> None:
+    package = frozen_pilot().packages[0]
+
+    class Response:
+        def raise_for_status(self):
+            raise RuntimeError("provider HTTP failure")
+
+    class Client:
+        def post(self, *args, **kwargs):
+            return Response()
+
+    result = GoogleGeminiSemanticJudge(api_key="judge-secret", client=Client()).judge(
+        package, frozen_pilot().settings
+    )
+
+    assert result.status is JudgeCallStatus.JUDGE_UNAVAILABLE
+    assert result.provider_status is None
+
+
 def test_unavailable_provider_is_operational_failure_not_unsupported(tmp_path: Path) -> None:
     provider = FakeProvider(unavailable=True)
 
@@ -377,6 +519,54 @@ def test_unavailable_provider_is_operational_failure_not_unsupported(tmp_path: P
     assert result["metrics"]["not_attempted"] == list(frozen_pilot().selected_package_ids[1:])
     assert result["metrics"]["record_level"]["raw_counts"]["evaluated"] == 0
     assert result["metrics"]["record_level"]["raw_counts"]["judge"] == {}
+
+
+def test_provider_incomplete_is_distinct_and_still_fails_fast(tmp_path: Path) -> None:
+    provider = FakeProvider(incomplete_at=1)
+
+    result = execute_frozen_pilot(
+        pilot=frozen_pilot(), reference=reference(), provider=provider, cache_dir=tmp_path
+    )
+
+    first_id = frozen_pilot().selected_package_ids[0]
+    assert provider.calls == 1
+    assert provider.models == [frozen_pilot().settings.model]
+    assert frozen_pilot().settings.fallback_model not in provider.models
+    assert result["run_status"] == "stopped_provider_incomplete"
+    assert result["stopped_package_id"] == first_id
+    assert result["automatic_retries"] == 0
+    assert result["automatic_fallback"] is False
+    assert result["metrics"]["provider_incomplete"] == [first_id]
+    assert result["metrics"]["judge_unavailable"] == []
+    assert result["metrics"]["malformed_output"] == []
+    assert result["metrics"]["not_attempted"] == list(frozen_pilot().selected_package_ids[1:])
+    assert result["metrics"]["record_level"]["raw_counts"]["evaluated"] == 0
+    assert result["metrics"]["record_level"]["agreement"] is None
+    assert result["operational_summary"]["provider_incomplete"] == 1
+    assert result["operational_summary"]["judge_unavailable"] == 0
+
+
+def test_historical_result_without_diagnostic_fields_remains_valid() -> None:
+    result = JudgeProviderResult.model_validate(
+        {
+            "status": "judge_unavailable",
+            "requested_model": "gemini-3.5-flash",
+            "returned_model": None,
+            "response_id": None,
+            "generated_at": "2026-08-27T00:00:00+00:00",
+            "latency_ms": 7250,
+            "usage": None,
+            "estimated_cost_usd": None,
+            "decision": None,
+            "error": "ValueError: judge interaction did not complete: incomplete",
+        }
+    )
+
+    assert result.status is JudgeCallStatus.JUDGE_UNAVAILABLE
+    assert result.provider_status is None
+    assert result.incomplete_reason is None
+    assert result.partial_model_output_present is None
+    assert result.thought_content_present is None
 
 
 @pytest.mark.parametrize("failure_position", [1, 3, 8])
@@ -559,3 +749,73 @@ def test_run_signature_and_challenge_fixture_are_frozen() -> None:
         "explicit_factual_limitation",
         "ambiguous_evidence",
     ]
+
+
+def test_timeout_only_retry_keeps_semantic_pilot_and_uses_new_signature(
+    tmp_path: Path,
+) -> None:
+    source = frozen_pilot()
+    retry_settings = source.settings.model_copy(update={"timeout_seconds": 60})
+    provisional = source.model_copy(update={"settings": retry_settings, "run_signature": "0" * 24})
+    retry = source.__class__.model_validate(
+        provisional.model_dump(mode="json") | {"run_signature": semantic_run_signature(provisional)}
+    )
+
+    validate_reference_against_pilot(reference(), retry, reference_pilot=source)
+
+    assert retry.run_signature != source.run_signature
+    assert retry.settings.timeout_seconds == 60
+    assert retry.package_payload_digest == source.package_payload_digest
+    assert retry.selected_package_ids == source.selected_package_ids
+    assert sum(len(package.generated_answer.claims) for package in retry.packages) == 14
+
+    provider = FakeProvider(unavailable=True)
+    result = execute_frozen_pilot(
+        pilot=retry,
+        reference=reference(),
+        provider=provider,
+        cache_dir=tmp_path,
+        reference_pilot=source,
+    )
+
+    assert result["run_status"] == "stopped_judge_unavailable"
+    assert provider.calls == 1
+
+
+def test_transport_retry_rejects_unrelated_setting_change() -> None:
+    source = frozen_pilot()
+    changed_settings = source.settings.model_copy(
+        update={"timeout_seconds": 60, "thinking_level": "low"}
+    )
+    provisional = source.model_copy(
+        update={"settings": changed_settings, "run_signature": "0" * 24}
+    )
+    changed = source.__class__.model_validate(
+        provisional.model_dump(mode="json") | {"run_signature": semantic_run_signature(provisional)}
+    )
+
+    with pytest.raises(ValueError, match="changed frozen protocol or settings"):
+        validate_reference_against_pilot(reference(), changed, reference_pilot=source)
+
+
+def test_model_retry_keeps_frozen_protocol_and_uses_new_signature() -> None:
+    source = frozen_pilot()
+    changed_settings = source.settings.model_copy(
+        update={"model": "gemini-3.5-flash", "timeout_seconds": 60}
+    )
+    provisional = source.model_copy(
+        update={"settings": changed_settings, "run_signature": "0" * 24}
+    )
+    retry = source.__class__.model_validate(
+        provisional.model_dump(mode="json") | {"run_signature": semantic_run_signature(provisional)}
+    )
+
+    validate_reference_against_pilot(reference(), retry, reference_pilot=source)
+
+    assert retry.run_signature != source.run_signature
+    assert retry.settings.model == "gemini-3.5-flash"
+    assert retry.settings.timeout_seconds == 60
+    assert retry.package_payload_digest == source.package_payload_digest
+    assert retry.judge_prompt_signature == source.judge_prompt_signature
+    assert retry.judge_rubric_signature == source.judge_rubric_signature
+    assert retry.judge_schema_signature == source.judge_schema_signature

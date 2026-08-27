@@ -76,8 +76,6 @@ class JudgeSettings(BaseModel):
     def validate_output_budget(self) -> JudgeSettings:
         if self.expected_output_tokens > self.max_output_tokens:
             raise ValueError("expected judge output cannot exceed maximum output")
-        if self.fallback_model == self.model:
-            raise ValueError("fallback judge model must differ from the primary model")
         if self.input_usd_per_million != 0 or self.output_usd_per_million != 0:
             raise ValueError("Free Tier judge pricing must remain zero")
         return self
@@ -341,12 +339,24 @@ def prepare_frozen_pilot(
 
 
 def validate_reference_against_pilot(
-    reference: SemanticJudgeReference, pilot: FrozenSemanticJudgePilot
+    reference: SemanticJudgeReference,
+    pilot: FrozenSemanticJudgePilot,
+    *,
+    reference_pilot: FrozenSemanticJudgePilot | None = None,
 ) -> None:
-    if reference.source_run_signature != pilot.source_run_signature:
+    reference_target = reference_pilot or pilot
+    if reference.source_run_signature != reference_target.source_run_signature:
         raise ValueError("semantic judge reference source run changed")
-    if reference.source_pilot_digest != canonical_digest(pilot.model_dump(mode="json")):
+    if reference.source_pilot_digest != canonical_digest(reference_target.model_dump(mode="json")):
         raise ValueError("semantic judge reference pilot digest changed")
+    if reference_pilot is not None:
+        source = reference_pilot.model_dump(mode="json", exclude={"run_signature"})
+        retry = pilot.model_dump(mode="json", exclude={"run_signature"})
+        for field in ("model", "timeout_seconds"):
+            source["settings"].pop(field)
+            retry["settings"].pop(field)
+        if source != retry:
+            raise ValueError("semantic judge retry changed frozen protocol or settings")
     if tuple(record.package_id for record in reference.records) != pilot.selected_package_ids:
         raise ValueError("semantic judge reference package IDs or order changed")
     for package, record in zip(pilot.packages, reference.records, strict=True):
@@ -364,8 +374,9 @@ def evaluate_judge_results(
     pilot: FrozenSemanticJudgePilot,
     reference: SemanticJudgeReference,
     results: list[JudgeExecutionRecord],
+    reference_pilot: FrozenSemanticJudgePilot | None = None,
 ) -> dict[str, Any]:
-    validate_reference_against_pilot(reference, pilot)
+    validate_reference_against_pilot(reference, pilot, reference_pilot=reference_pilot)
     by_id = {result.package_id: result for result in results}
     if len(by_id) != len(results) or not set(by_id).issubset(pilot.selected_package_ids):
         raise ValueError("judge result IDs are duplicated or outside the frozen pilot")
@@ -373,6 +384,7 @@ def evaluate_judge_results(
     claim_pairs: list[tuple[JudgeVerdict, JudgeVerdict]] = []
     disagreements: list[dict[str, Any]] = []
     unavailable: list[str] = []
+    incomplete: list[str] = []
     malformed: list[str] = []
     not_attempted: list[str] = []
     for reference_record in reference.records:
@@ -382,6 +394,9 @@ def evaluate_judge_results(
             continue
         if execution.result.status is JudgeCallStatus.JUDGE_UNAVAILABLE:
             unavailable.append(reference_record.package_id)
+            continue
+        if execution.result.status is JudgeCallStatus.PROVIDER_INCOMPLETE:
+            incomplete.append(reference_record.package_id)
             continue
         if execution.result.status is JudgeCallStatus.MALFORMED_OUTPUT:
             malformed.append(reference_record.package_id)
@@ -447,6 +462,7 @@ def evaluate_judge_results(
         "record_level": metrics(record_pairs),
         "claim_level": metrics(claim_pairs),
         "judge_unavailable": unavailable,
+        "provider_incomplete": incomplete,
         "malformed_output": malformed,
         "not_attempted": not_attempted,
         "disagreements": disagreements,
@@ -474,11 +490,13 @@ def execute_frozen_pilot(
     reference: SemanticJudgeReference,
     provider: SemanticJudgeProvider,
     cache_dir: Path = DEFAULT_JUDGE_CACHE,
+    reference_pilot: FrozenSemanticJudgePilot | None = None,
 ) -> dict[str, Any]:
-    validate_reference_against_pilot(reference, pilot)
+    validate_reference_against_pilot(reference, pilot, reference_pilot=reference_pilot)
     results: list[JudgeExecutionRecord] = []
     provider_calls = 0
     stopped_package_id: str | None = None
+    stopped_status: JudgeCallStatus | None = None
     for package in pilot.packages:
         path = result_cache_path(cache_dir, pilot.run_signature, package.source_package_id)
         if path.exists():
@@ -495,8 +513,12 @@ def execute_frozen_pilot(
             )
             write_json(path, record.model_dump(mode="json"))
         results.append(record)
-        if record.result.status is JudgeCallStatus.JUDGE_UNAVAILABLE:
+        if record.result.status in {
+            JudgeCallStatus.JUDGE_UNAVAILABLE,
+            JudgeCallStatus.PROVIDER_INCOMPLETE,
+        }:
             stopped_package_id = package.source_package_id
+            stopped_status = record.result.status
             break
     successful = [
         record.result for record in results if record.result.status is JudgeCallStatus.SUCCEEDED
@@ -506,10 +528,32 @@ def execute_frozen_pilot(
         for record in results
         if record.result.status is JudgeCallStatus.MALFORMED_OUTPUT
     ]
-    usage = [result.usage for result in successful if result.usage is not None]
+    incomplete = [
+        record.result
+        for record in results
+        if record.result.status is JudgeCallStatus.PROVIDER_INCOMPLETE
+    ]
+    unavailable = [
+        record.result
+        for record in results
+        if record.result.status is JudgeCallStatus.JUDGE_UNAVAILABLE
+    ]
+    usage = [record.result.usage for record in results if record.result.usage is not None]
+
+    def usage_total(field: str) -> int | None:
+        values = [value for item in usage if (value := getattr(item, field)) is not None]
+        return sum(values) if values else None
+
+    costs = [
+        record.result.estimated_cost_usd
+        for record in results
+        if record.result.estimated_cost_usd is not None
+    ]
     run_status = (
         "stopped_judge_unavailable"
-        if stopped_package_id is not None
+        if stopped_status is JudgeCallStatus.JUDGE_UNAVAILABLE
+        else "stopped_provider_incomplete"
+        if stopped_status is JudgeCallStatus.PROVIDER_INCOMPLETE
         else "completed_with_malformed_outputs"
         if malformed
         else "completed"
@@ -528,7 +572,8 @@ def execute_frozen_pilot(
         "operational_summary": {
             "successes": len(successful),
             "failures": len(results) - len(successful),
-            "judge_unavailable": int(stopped_package_id is not None),
+            "judge_unavailable": len(unavailable),
+            "provider_incomplete": len(incomplete),
             "malformed_outputs": len(malformed),
             "duration_seconds": sum(record.result.latency_ms for record in results) / 1000,
             "verdicts": dict(
@@ -540,12 +585,18 @@ def execute_frozen_pilot(
                     ).items()
                 )
             ),
-            "input_tokens": sum(item.input_tokens for item in usage),
-            "output_tokens": sum(item.output_tokens for item in usage),
-            "thought_tokens": sum(item.thought_tokens for item in usage),
-            "estimated_cost_usd": sum(result.estimated_cost_usd or 0 for result in successful),
+            "input_tokens": usage_total("input_tokens"),
+            "output_tokens": usage_total("output_tokens"),
+            "thought_tokens": usage_total("thought_tokens"),
+            "total_tokens": usage_total("total_tokens"),
+            "estimated_cost_usd": sum(costs) if costs else None,
         },
-        "metrics": evaluate_judge_results(pilot=pilot, reference=reference, results=results),
+        "metrics": evaluate_judge_results(
+            pilot=pilot,
+            reference=reference,
+            results=results,
+            reference_pilot=reference_pilot,
+        ),
         "results": [record.model_dump(mode="json") for record in results],
     }
 
@@ -569,6 +620,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--config", type=Path, default=DEFAULT_JUDGE_CONFIG)
     parser.add_argument("--packages", type=Path, default=DEFAULT_JUDGE_PACKAGES)
     parser.add_argument("--reference", type=Path, default=DEFAULT_JUDGE_REFERENCE)
+    parser.add_argument(
+        "--reference-pilot",
+        type=Path,
+        help="source pilot bound to the reference for a signed model or timeout retry",
+    )
     parser.add_argument("--output", type=Path, default=DEFAULT_JUDGE_OUTPUT)
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_JUDGE_CACHE)
     parser.add_argument("--confirm-run-signature")
@@ -600,7 +656,10 @@ def main(argv: list[str] | None = None) -> int:
         # All artifact, contract, reference, and confirmation checks precede provider creation.
         pilot = load_frozen_judge_pilot(args.packages)
         reference = load_judge_reference(args.reference)
-        validate_reference_against_pilot(reference, pilot)
+        reference_pilot = (
+            load_frozen_judge_pilot(args.reference_pilot) if args.reference_pilot else None
+        )
+        validate_reference_against_pilot(reference, pilot, reference_pilot=reference_pilot)
         if args.preflight:
             print(json.dumps({"verified": True, "calls": 0, "run_signature": pilot.run_signature}))
             return 0
@@ -614,6 +673,7 @@ def main(argv: list[str] | None = None) -> int:
             reference=reference,
             provider=provider,
             cache_dir=args.cache_dir,
+            reference_pilot=reference_pilot,
         )
         write_json(args.output, result)
         return 0 if result["run_status"] == "completed" else 1

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Literal, Protocol
@@ -114,15 +115,16 @@ class SemanticJudgeDecision(BaseModel):
 class JudgeTokenUsage(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    input_tokens: int = Field(ge=0)
-    output_tokens: int = Field(ge=0)
-    thought_tokens: int = Field(ge=0)
-    total_tokens: int = Field(ge=0)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    thought_tokens: int | None = Field(default=None, ge=0)
+    total_tokens: int | None = Field(default=None, ge=0)
 
 
 class JudgeCallStatus(StrEnum):
     SUCCEEDED = "succeeded"
     JUDGE_UNAVAILABLE = "judge_unavailable"
+    PROVIDER_INCOMPLETE = "provider_incomplete"
     MALFORMED_OUTPUT = "malformed_output"
 
 
@@ -139,6 +141,10 @@ class JudgeProviderResult(BaseModel):
     estimated_cost_usd: float | None = Field(default=None, ge=0)
     decision: SemanticJudgeDecision | None
     error: str | None
+    provider_status: str | None = Field(default=None, max_length=64)
+    incomplete_reason: str | None = Field(default=None, max_length=256)
+    partial_model_output_present: bool | None = None
+    thought_content_present: bool | None = None
 
     @model_validator(mode="after")
     def validate_status(self) -> JudgeProviderResult:
@@ -227,6 +233,98 @@ def parse_judge_decision(raw_output: str, package: SemanticJudgePackage) -> Sema
     return decision
 
 
+def _bounded_provider_text(value: Any, *, max_length: int) -> str | None:
+    if not isinstance(value, str):
+        return None
+    bounded = value.strip()[:max_length]
+    return bounded or None
+
+
+def _optional_token_count(usage: Mapping[str, Any], keys: tuple[str, ...]) -> int | None:
+    for key in keys:
+        if key not in usage or isinstance(usage[key], bool):
+            continue
+        try:
+            value = int(usage[key])
+        except (TypeError, ValueError):
+            continue
+        if value >= 0:
+            return value
+    return None
+
+
+def _parse_judge_usage(raw: Any) -> JudgeTokenUsage | None:
+    if not isinstance(raw, Mapping):
+        return None
+    values = {
+        "input_tokens": _optional_token_count(
+            raw, ("total_input_tokens", "input_tokens", "prompt_token_count")
+        ),
+        "output_tokens": _optional_token_count(
+            raw, ("total_output_tokens", "output_tokens", "candidates_token_count")
+        ),
+        "thought_tokens": _optional_token_count(
+            raw, ("total_thought_tokens", "thought_tokens", "thoughts_token_count")
+        ),
+        "total_tokens": _optional_token_count(raw, ("total_tokens", "total_token_count")),
+    }
+    return (
+        JudgeTokenUsage(**values) if any(value is not None for value in values.values()) else None
+    )
+
+
+def _incomplete_reason(body: Mapping[str, Any]) -> str | None:
+    for key in ("incomplete_reason", "finish_reason"):
+        reason = _bounded_provider_text(body.get(key), max_length=256)
+        if reason is not None:
+            return reason
+    details = body.get("incomplete_details")
+    if isinstance(details, Mapping):
+        for key in ("reason", "finish_reason"):
+            reason = _bounded_provider_text(details.get(key), max_length=256)
+            if reason is not None:
+                return reason
+    return None
+
+
+def _provider_content_presence(body: Mapping[str, Any]) -> tuple[bool, bool]:
+    partial_output = False
+    thought_content = False
+    steps = body.get("steps")
+    if not isinstance(steps, list):
+        return partial_output, thought_content
+    thought_types = {"reasoning", "thought", "thinking"}
+    for step in steps:
+        if not isinstance(step, Mapping):
+            continue
+        step_type = str(step.get("type", "")).lower()
+        content = step.get("content")
+        if step_type == "model_output" and isinstance(content, list) and bool(content):
+            partial_output = True
+        if step_type in thought_types and bool(content):
+            thought_content = True
+        if not isinstance(content, list):
+            continue
+        for item in content:
+            if not isinstance(item, Mapping):
+                continue
+            content_type = str(item.get("type", "")).lower()
+            if content_type in thought_types or item.get("thought") is True:
+                thought_content = True
+    return partial_output, thought_content
+
+
+def _usage_cost(usage: JudgeTokenUsage | None, settings: Any) -> float | None:
+    if usage is None or any(
+        value is None for value in (usage.input_tokens, usage.output_tokens, usage.thought_tokens)
+    ):
+        return None
+    return (
+        usage.input_tokens * settings.input_usd_per_million
+        + (usage.output_tokens + usage.thought_tokens) * settings.output_usd_per_million
+    ) / 1_000_000
+
+
 class GoogleGeminiSemanticJudge:
     """One-shot, stateless Gemini Interactions adapter with no automatic retries."""
 
@@ -267,8 +365,26 @@ class GoogleGeminiSemanticJudge:
             )
             response.raise_for_status()
             body = response.json()
-            if body.get("status") != "completed":
-                raise ValueError(f"judge interaction did not complete: {body.get('status')}")
+            provider_status = _bounded_provider_text(body.get("status"), max_length=64)
+            usage = _parse_judge_usage(body.get("usage"))
+            if provider_status != "completed":
+                partial_output, thought_content = _provider_content_presence(body)
+                return JudgeProviderResult(
+                    status=JudgeCallStatus.PROVIDER_INCOMPLETE,
+                    requested_model=settings.model,
+                    returned_model=_bounded_provider_text(body.get("model"), max_length=200),
+                    response_id=_bounded_provider_text(body.get("id"), max_length=200),
+                    generated_at=datetime.now(UTC).isoformat(),
+                    latency_ms=(time.perf_counter() - started) * 1000,
+                    usage=usage,
+                    estimated_cost_usd=_usage_cost(usage, settings),
+                    decision=None,
+                    error="provider interaction did not complete",
+                    provider_status=provider_status,
+                    incomplete_reason=_incomplete_reason(body),
+                    partial_model_output_present=partial_output,
+                    thought_content_present=thought_content,
+                )
             raw_output = "".join(
                 str(content.get("text", ""))
                 for step in body.get("steps", [])
@@ -300,30 +416,12 @@ class GoogleGeminiSemanticJudge:
                 response_id=body.get("id"),
                 generated_at=datetime.now(UTC).isoformat(),
                 latency_ms=(time.perf_counter() - started) * 1000,
-                usage=None,
-                estimated_cost_usd=None,
+                usage=usage,
+                estimated_cost_usd=_usage_cost(usage, settings),
                 decision=None,
                 error=f"{type(error).__name__}: {error}",
             )
 
-        usage_raw = body.get("usage")
-        usage = None
-        if usage_raw is not None:
-            try:
-                usage = JudgeTokenUsage(
-                    input_tokens=int(usage_raw.get("total_input_tokens", 0)),
-                    output_tokens=int(usage_raw.get("total_output_tokens", 0)),
-                    thought_tokens=int(usage_raw.get("total_thought_tokens", 0)),
-                    total_tokens=int(usage_raw.get("total_tokens", 0)),
-                )
-            except (AttributeError, TypeError, ValueError):
-                usage = None
-        cost = None
-        if usage is not None:
-            cost = (
-                usage.input_tokens * settings.input_usd_per_million
-                + (usage.output_tokens + usage.thought_tokens) * settings.output_usd_per_million
-            ) / 1_000_000
         return JudgeProviderResult(
             status=JudgeCallStatus.SUCCEEDED,
             requested_model=settings.model,
@@ -332,7 +430,7 @@ class GoogleGeminiSemanticJudge:
             generated_at=datetime.now(UTC).isoformat(),
             latency_ms=(time.perf_counter() - started) * 1000,
             usage=usage,
-            estimated_cost_usd=cost,
+            estimated_cost_usd=_usage_cost(usage, settings),
             decision=decision,
             error=None,
         )
