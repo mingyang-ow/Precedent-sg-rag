@@ -1,5 +1,5 @@
 {
-  "adjudication_digest": "169c42fffba61f6047f956b08a885a2e7a4de78bd66259bb8690027f84399419",
+  "adjudication_digest": "5bfca978eef01713f937a08f9212a79aa01a928fb2b0d17ee89f687ce0ba9a15",
   "adjudication_version": "behaviour-sufficiency-v1",
   "answer_pilot_adjudication_digest": "1d603177732e892f150cdffead63e85242b2b865b8e8dcc22dd56182dbc4fd03",
   "answer_pilot_adjudication_version": "pilot-sufficiency-v1",
@@ -92,7 +92,7 @@
   "pilot_version": "pilot-behaviour-v1",
   "prevalence_warning": "The intentional 50/50 class balance is not an estimate of natural production answer or abstention prevalence.",
   "purpose": "balanced behavioural diagnostic of the rag-v2 answer-versus-abstain decision boundary",
-  "run_signature": "4f924e4441f67d42a6a3ff07",
+  "run_signature": "3664b44b7d4dbe620225d598",
   "schema_version": 1,
   "seed": 20260827,
   "selected_package_ids": [

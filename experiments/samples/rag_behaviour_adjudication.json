@@ -1456,7 +1456,7 @@
       "query_mode": "facts_principle",
       "review_date": "2026-08-27",
       "review_order": 52,
-      "review_rationale": "E1 discusses director removal and a written-resolution article, but it does not address a general share-issue mandate or a dilutive placement, and its relationship to the supplied Chan Choon Ming case ID is unverified. The adjacent content makes this borderline, but it cannot support a defensible recommendation of the supplied case. This was the first remaining facts-plus-principle abstention encountered and fills the final quota. # Oracle review The two initially precommitted oracle candidates were inspected only after the retrieved quotas were filled. The facts-only candidate proved insufficient. Before inspecting any replacement evidence, the fallback order was frozen as ascending sha256(seed NUL oracle-fallback NUL facts_only NUL package_id), then package ID, excluding the existing answer-pilot packages and already inspected oracle candidates.",
+      "review_rationale": "E1 discusses director removal and a written-resolution article, but it does not address a general share-issue mandate or a dilutive placement, and its relationship to the supplied Chan Choon Ming case ID is unverified. The adjacent content makes this borderline, but it cannot support a defensible recommendation of the supplied case. This was the first remaining facts-plus-principle abstention encountered and fills the final quota.",
       "review_version": "behaviour-sufficiency-v1",
       "reviewer": "Codex blind manual evidence review",
       "selected_for_pilot": true,

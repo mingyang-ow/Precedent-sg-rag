@@ -209,9 +209,9 @@ useful supplied authority.
 The separate behavioral pilot contains one manually verified oracle answer, two retrieved answers,
 and three retrieved abstentions per query mode. Its retrieved top-k distribution is four at k=1,
 five at k=3, and one at k=5. Its frozen adjudication digest is
-`169c42fffba61f6047f956b08a885a2e7a4de78bd66259bb8690027f84399419`, selected-evidence
+`5bfca978eef01713f937a08f9212a79aa01a928fb2b0d17ee89f687ce0ba9a15`, selected-evidence
 digest is `9faf464cb462aa3a4b87a13942f7bea4f7c81cba6db99a97ea8a165aca5cebb5`, and cache/run
-signature is `4f924e4441f67d42a6a3ff07`.
+signature is `3664b44b7d4dbe620225d598`.
 
 Automatic SDK retries are disabled (`max_retries=0`), so 352 logical calls mean 352 planned HTTP
 attempts. Cache resumption makes completed records free to reuse. The command exits non-zero when
