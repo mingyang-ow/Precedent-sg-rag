@@ -1,0 +1,373 @@
+{
+  "audit_version": "citation-normalization-v1",
+  "cleanroom_adjudication_digest": "f3915f8202a56f687cc85655290532d36da6603c7c636e57b8500a90845eb6db",
+  "historical_evidence_digest": "9faf464cb462aa3a4b87a13942f7bea4f7c81cba6db99a97ea8a165aca5cebb5",
+  "historical_generation_contract": {
+    "automatic_retries": 0,
+    "max_output_tokens": 600,
+    "model": "gpt-5.6-luna",
+    "output_schema_signature": "61e54fb6213abad2a8975479641a6e5f9b19e44361c826061cbfbb856bb87eeb",
+    "prompt_signature": "29fa06887d945fd91959c89b6d9637d0cb732beb21ae4f5d2bd001aa9e3446be",
+    "prompt_version": "rag-v2",
+    "reasoning_effort": "none",
+    "seed": null,
+    "temperature": null,
+    "top_ks": [
+      1,
+      3,
+      5
+    ],
+    "verbosity": "low"
+  },
+  "historical_run_signature": "3664b44b7d4dbe620225d598",
+  "manual_audit_digest": "7ae9744500afb1d1da4d76b3e322bfe207bdd0146ac5dd526da9f89b9e0cbb9a",
+  "manual_classification_counts": {
+    "evaluator_artifact": 4,
+    "genuine_citation_error": 3
+  },
+  "manual_classifications": [
+    {
+      "authority_supplied_in_evidence": true,
+      "automatic_stage": "no_match",
+      "canonical_representation": null,
+      "citation_target_valid": true,
+      "claim_number": 1,
+      "claim_supported_by_cited_passage": true,
+      "classification": "genuine_citation_error",
+      "corrupted_representation": null,
+      "evidence_id": "E1",
+      "failure_category": "quote_not_found",
+      "package_id": "55b464702f081a3ff6d688fb",
+      "reason": "The proposition is present across consecutive sentences, but the generated quotation inserts literal ellipses and splices non-contiguous text; narrow normalization must not treat it as verbatim."
+    },
+    {
+      "authority_supplied_in_evidence": true,
+      "automatic_stage": "no_match",
+      "canonical_representation": null,
+      "citation_target_valid": true,
+      "claim_number": 1,
+      "claim_supported_by_cited_passage": true,
+      "classification": "genuine_citation_error",
+      "corrupted_representation": null,
+      "evidence_id": "E1",
+      "failure_category": "quote_not_found",
+      "package_id": "266a3190b2ba1df079c15645",
+      "reason": "The Said v Butt proposition is stated in E1, but the quotation replaces a substantive parenthetical with a literal ellipsis and is not a contiguous quote."
+    },
+    {
+      "authority_supplied_in_evidence": true,
+      "automatic_stage": "mojibake_normalized_match",
+      "canonical_representation": "’",
+      "citation_target_valid": true,
+      "claim_number": 1,
+      "claim_supported_by_cited_passage": true,
+      "classification": "evaluator_artifact",
+      "corrupted_representation": "â",
+      "evidence_id": "E3",
+      "failure_category": "evaluator_artifact",
+      "package_id": "a35f9a4b139ba3a67608dcee",
+      "reason": "The quote is otherwise contiguous and identical; the evidence stores a UTF-8 right single quotation mark decoded as Windows-1252/Latin-1 mojibake."
+    },
+    {
+      "authority_supplied_in_evidence": true,
+      "automatic_stage": "no_match",
+      "canonical_representation": null,
+      "citation_target_valid": true,
+      "claim_number": 2,
+      "claim_supported_by_cited_passage": true,
+      "classification": "genuine_citation_error",
+      "corrupted_representation": null,
+      "evidence_id": "E3",
+      "failure_category": "quote_not_found",
+      "package_id": "a35f9a4b139ba3a67608dcee",
+      "reason": "The passage supports the sentencing proposition, but the generated quotation omits words from two list items and inserts a literal ellipsis; it is not contiguous."
+    },
+    {
+      "authority_supplied_in_evidence": true,
+      "automatic_stage": "mojibake_normalized_match",
+      "canonical_representation": "–",
+      "citation_target_valid": true,
+      "claim_number": 1,
+      "claim_supported_by_cited_passage": true,
+      "classification": "evaluator_artifact",
+      "corrupted_representation": "â",
+      "evidence_id": "E1",
+      "failure_category": "evaluator_artifact",
+      "package_id": "88f23f608864cf5f1372a038",
+      "reason": "The quote is otherwise contiguous and identical; the evidence stores UTF-8 en-dash bytes as Windows-1252/Latin-1 mojibake."
+    },
+    {
+      "authority_supplied_in_evidence": true,
+      "automatic_stage": "mojibake_normalized_match",
+      "canonical_representation": "–",
+      "citation_target_valid": true,
+      "claim_number": 2,
+      "claim_supported_by_cited_passage": true,
+      "classification": "evaluator_artifact",
+      "corrupted_representation": "â",
+      "evidence_id": "E1",
+      "failure_category": "evaluator_artifact",
+      "package_id": "88f23f608864cf5f1372a038",
+      "reason": "The quote is otherwise contiguous and identical; each visible separator differs only by the observed en-dash mojibake sequence."
+    },
+    {
+      "authority_supplied_in_evidence": true,
+      "automatic_stage": "mojibake_normalized_match",
+      "canonical_representation": "–",
+      "citation_target_valid": true,
+      "claim_number": 1,
+      "claim_supported_by_cited_passage": true,
+      "classification": "evaluator_artifact",
+      "corrupted_representation": "â",
+      "evidence_id": "E1",
+      "failure_category": "evaluator_artifact",
+      "package_id": "404920c168c10748e0258895",
+      "reason": "The quote is otherwise contiguous and identical; each visible separator differs only by the observed en-dash mojibake sequence."
+    }
+  ],
+  "metrics": {
+    "affected_claims": [
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 1,
+        "earliest_match_stage": "mojibake_normalized_match",
+        "evidence_id": "E3",
+        "historical_strict_match": false,
+        "normalized_match": true,
+        "package_id": "a35f9a4b139ba3a67608dcee"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 1,
+        "earliest_match_stage": "mojibake_normalized_match",
+        "evidence_id": "E1",
+        "historical_strict_match": false,
+        "normalized_match": true,
+        "package_id": "88f23f608864cf5f1372a038"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 2,
+        "earliest_match_stage": "mojibake_normalized_match",
+        "evidence_id": "E1",
+        "historical_strict_match": false,
+        "normalized_match": true,
+        "package_id": "88f23f608864cf5f1372a038"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 1,
+        "earliest_match_stage": "mojibake_normalized_match",
+        "evidence_id": "E1",
+        "historical_strict_match": false,
+        "normalized_match": true,
+        "package_id": "404920c168c10748e0258895"
+      }
+    ],
+    "affected_records": [
+      "404920c168c10748e0258895",
+      "88f23f608864cf5f1372a038",
+      "a35f9a4b139ba3a67608dcee"
+    ],
+    "deltas": {
+      "citation_completeness": {
+        "absolute": 0.0,
+        "relative": 0.0
+      },
+      "citation_correctness": {
+        "absolute": 0.3125,
+        "relative": 0.7142857142857143
+      },
+      "citation_validity": {
+        "absolute": 0.25,
+        "relative": 0.6666666666666666
+      },
+      "fully_valid_answered_records": {
+        "absolute": 2,
+        "relative": 0.6666666666666666
+      },
+      "unsupported_claim_rate": {
+        "absolute": -0.3125,
+        "relative": -0.5555555555555556
+      }
+    },
+    "normalized": {
+      "answered_records": 8,
+      "citation_completeness": 1.0,
+      "citation_correctness": 0.75,
+      "citation_validity": 0.625,
+      "fully_valid_answered_records": 5,
+      "unsupported_claim_rate": 0.25
+    },
+    "per_claim": [
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 1,
+        "earliest_match_stage": "no_match",
+        "evidence_id": "E1",
+        "historical_strict_match": false,
+        "normalized_match": false,
+        "package_id": "55b464702f081a3ff6d688fb"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 2,
+        "earliest_match_stage": "strict_match",
+        "evidence_id": "E1",
+        "historical_strict_match": true,
+        "normalized_match": true,
+        "package_id": "55b464702f081a3ff6d688fb"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 1,
+        "earliest_match_stage": "no_match",
+        "evidence_id": "E1",
+        "historical_strict_match": false,
+        "normalized_match": false,
+        "package_id": "266a3190b2ba1df079c15645"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 1,
+        "earliest_match_stage": "strict_match",
+        "evidence_id": "E1",
+        "historical_strict_match": true,
+        "normalized_match": true,
+        "package_id": "615689094ac2690f02642f7d"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 2,
+        "earliest_match_stage": "strict_match",
+        "evidence_id": "E1",
+        "historical_strict_match": true,
+        "normalized_match": true,
+        "package_id": "615689094ac2690f02642f7d"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 1,
+        "earliest_match_stage": "strict_match",
+        "evidence_id": "E1",
+        "historical_strict_match": true,
+        "normalized_match": true,
+        "package_id": "7cfe4dcc0cc44a18b4f6a498"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 2,
+        "earliest_match_stage": "strict_match",
+        "evidence_id": "E1",
+        "historical_strict_match": true,
+        "normalized_match": true,
+        "package_id": "7cfe4dcc0cc44a18b4f6a498"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 1,
+        "earliest_match_stage": "mojibake_normalized_match",
+        "evidence_id": "E3",
+        "historical_strict_match": false,
+        "normalized_match": true,
+        "package_id": "a35f9a4b139ba3a67608dcee"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 2,
+        "earliest_match_stage": "no_match",
+        "evidence_id": "E3",
+        "historical_strict_match": false,
+        "normalized_match": false,
+        "package_id": "a35f9a4b139ba3a67608dcee"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 1,
+        "earliest_match_stage": "strict_match",
+        "evidence_id": "E1",
+        "historical_strict_match": true,
+        "normalized_match": true,
+        "package_id": "4a485ec6ed04a9358fa9b711"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 2,
+        "earliest_match_stage": "strict_match",
+        "evidence_id": "E1",
+        "historical_strict_match": true,
+        "normalized_match": true,
+        "package_id": "4a485ec6ed04a9358fa9b711"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 1,
+        "earliest_match_stage": "mojibake_normalized_match",
+        "evidence_id": "E1",
+        "historical_strict_match": false,
+        "normalized_match": true,
+        "package_id": "88f23f608864cf5f1372a038"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 2,
+        "earliest_match_stage": "mojibake_normalized_match",
+        "evidence_id": "E1",
+        "historical_strict_match": false,
+        "normalized_match": true,
+        "package_id": "88f23f608864cf5f1372a038"
+      },
+      {
+        "authority_supplied_in_evidence": true,
+        "citation_target_valid": true,
+        "claim_number": 1,
+        "earliest_match_stage": "mojibake_normalized_match",
+        "evidence_id": "E1",
+        "historical_strict_match": false,
+        "normalized_match": true,
+        "package_id": "404920c168c10748e0258895"
+      }
+    ],
+    "stage_counts": {
+      "mojibake_normalized_match": 4,
+      "no_match": 3,
+      "strict_match": 7
+    },
+    "strict": {
+      "answered_records": 8,
+      "citation_completeness": 1.0,
+      "citation_correctness": 0.4375,
+      "citation_validity": 0.375,
+      "fully_valid_answered_records": 3,
+      "unsupported_claim_rate": 0.5625
+    }
+  },
+  "model_visible_inputs_changed": false,
+  "provider_calls_made": 0,
+  "remaining_failure_taxonomy": {
+    "quote_not_found": 3
+  },
+  "schema_version": 1,
+  "strict_mode_preserved": true,
+  "type_b_not_applied": [
+    "modify model-visible evidence text",
+    "expose citation-verification metadata in the prompt"
+  ]
+}

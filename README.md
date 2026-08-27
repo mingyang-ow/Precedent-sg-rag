@@ -63,6 +63,8 @@ uv run sg-legal-rag-evaluate --reconstruct-and-verify --behaviour-pilot
 # Sanitized blind-review export and cached-output-only clean-room evaluation.
 uv run sg-legal-rag-cleanroom --export-review
 uv run sg-legal-rag-cleanroom --evaluate
+# Compare preserved strict citation metrics with deterministic evaluator-only normalization.
+uv run sg-legal-rag-citation-audit
 uv run pytest
 ```
 

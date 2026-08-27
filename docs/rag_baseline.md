@@ -246,6 +246,44 @@ primary metric because `rag-v2` explicitly requires verbatim quotes. Changing mo
 or exposing citation-verification metadata would require a new evidence digest, run signature, and
 pilot and is not applied retroactively.
 
+## Phase 3.1 citation evaluator audit
+
+Strict citation matching remains the primary historical metric. In the current implementation,
+"strict" already means substring matching after NFKC and whitespace canonicalization; Phase 3.1
+does not change that behavior. A separate evaluator-only normalized mode reports the earliest
+successful comparison stage—raw exact, NFKC, whitespace, observed mojibake equivalence, or no
+match—and adds only two mappings justified by the frozen outputs:
+
+| Corrupted evidence text | Canonical comparison text | Observed effect |
+| --- | --- | --- |
+| `â` | `–` | Three claims across two written-resolution packages |
+| `â` | `’` | One sentencing-factor claim |
+
+No generic encoding repair, fuzzy matching, semantic similarity, embedding, or model judge is
+used. Both source strings remain immutable. The normalized metric is evaluation robustness, not
+better model performance.
+
+| Metric | Strict | Normalized | Absolute change |
+| --- | ---: | ---: | ---: |
+| Fully valid answered records | 3/8 | 5/8 | +2 |
+| Citation validity | 0.375 | 0.625 | +0.250 |
+| Mean citation correctness | 0.4375 | 0.7500 | +0.3125 |
+| Citation completeness | 1.0000 | 1.0000 | 0 |
+| Unsupported-claim proxy | 0.5625 | 0.2500 | -0.3125 |
+
+Four of fourteen claims across three records change under normalized matching. Manual inspection
+classified all four as evaluator artifacts: the quotations are otherwise contiguous and identical.
+Three claims remain failures. Each uses literal ellipses to splice or omit passage words; each
+underlying proposition is present in the cited passage, but the quoted text is not contiguous and
+therefore remains a genuine `quote_not_found` citation-contract error. Citation-target validity,
+quote validity, claim support, and whether the recommended authority was supplied are reported as
+separate dimensions in the audit artifact.
+
+This is a mixed result: deterministic encoding equivalence explains most failed claims (4/7) and
+two failed records, but three genuine quotation failures remain. Changing evidence text or adding
+verification metadata to the prompt would be a model-visible Type B change requiring a new evidence
+digest, run signature, and pilot; Phase 3.1 makes no such change.
+
 Automatic SDK retries are disabled (`max_retries=0`), so 352 logical calls mean 352 planned HTTP
 attempts. Cache resumption makes completed records free to reuse. The command exits non-zero when
 all provider attempts in an invocation fail. The explicit `--retry-errors` option can add at most
@@ -306,6 +344,7 @@ The clean-room review export and cached-output-only recomputation are separate n
 ```bash
 uv run sg-legal-rag-cleanroom --export-review
 uv run sg-legal-rag-cleanroom --evaluate
+uv run sg-legal-rag-citation-audit
 ```
 
 ## Completion gate

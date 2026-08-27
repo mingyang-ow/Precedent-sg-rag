@@ -40,6 +40,7 @@ sg-legal-rerank = "sg_legal_rag.retrieval.reranker_benchmark:main"
 sg-legal-corpus-repair = "sg_legal_rag.retrieval.corpus_repair_benchmark:main"
 sg-legal-rag-evaluate = "sg_legal_rag.generation.benchmark:main"
 sg-legal-rag-cleanroom = "sg_legal_rag.generation.cleanroom_benchmark:main"
+sg-legal-rag-citation-audit = "sg_legal_rag.generation.citation_audit:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sg_legal_rag"]
