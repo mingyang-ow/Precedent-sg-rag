@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 from collections import Counter
+from datetime import date
 from types import SimpleNamespace
 
 import httpx
@@ -14,6 +15,10 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
+from sg_legal_rag.generation.adjudication import (
+    PilotAdjudication,
+    PilotAdjudicationRecord,
+)
 from sg_legal_rag.generation.benchmark import (
     RAGConfig,
     all_generation_attempts_failed,
@@ -24,6 +29,7 @@ from sg_legal_rag.generation.benchmark import (
     select_canary,
     select_pilot,
     sufficiency_review_template,
+    validate_pilot_adjudication,
 )
 from sg_legal_rag.generation.evaluation import (
     EvaluationStatus,
@@ -452,6 +458,68 @@ def test_package_matrix_and_fixed_pilot_cover_all_conditions(
     }
 
 
+def test_pilot_adjudication_requires_no_model_outputs(
+    corpus: CorpusRepairDataset, index: BM25Index, case_to_id: dict[str, int]
+) -> None:
+    selected = select_queries(
+        modes=("facts_only", "facts_principle"),
+        dataset=corpus,
+        index=index,
+        case_to_id=case_to_id,
+        per_stratum=1,
+        retrieval_depth=5,
+        seed=42,
+    )
+    packages = build_packages(
+        selected,
+        top_ks=(1, 3, 5),
+        index=index,
+        dataset=corpus,
+        case_to_id=case_to_id,
+    )
+    pilot = select_pilot(packages)
+    retrieved = tuple(
+        package for package in pilot if package.condition is EvidenceCondition.RETRIEVED
+    )
+    records = tuple(
+        PilotAdjudicationRecord(
+            package_id=package.package_id,
+            target_present=package.target_present,
+            evidence_sufficient=True,
+            expected_action=ExpectedAction.ANSWER,
+            review_rationale="The supplied passage identifies a relevant legal proposition.",
+            supporting_evidence_ids=(package.evidence[0].evidence_id,),
+            support_granularity="exact_passage",
+            passage_support_note="The exact passage is sufficient for a bounded answer.",
+            borderline=False,
+            reviewer="offline reviewer",
+            review_date=date(2026, 8, 27),
+            review_version="test-v1",
+        )
+        for package in retrieved
+    )
+    adjudication = PilotAdjudication(
+        schema_version=1,
+        adjudication_version="test-v1",
+        blinded_to_model_outputs=True,
+        reviewer="offline reviewer",
+        review_date=date(2026, 8, 27),
+        pilot_package_ids=tuple(package.package_id for package in pilot),
+        pilot_evidence_signature=evidence_freeze(pilot)["signature"],
+        retrieved_pilot_evidence_signature=evidence_freeze(retrieved)["signature"],
+        records=records,
+    )
+
+    labeled_pilot, metadata = validate_pilot_adjudication(adjudication, pilot)
+
+    assert all(
+        package.expected_action is not ExpectedAction.UNKNOWN_NEEDS_REVIEW
+        for package in labeled_pilot
+    )
+    assert metadata["blinded_to_model_outputs"] is True
+    assert metadata["retrieved_expected_action_counts"] == {"answer": 10}
+
+
 def test_bm25_scores_are_identical_across_python_hash_seeds() -> None:
     code = """
 import json
@@ -566,6 +634,7 @@ def test_manifest_freezes_evidence_and_rejects_reconstruction_drift(
         pilot=pilot,
         canary=canary,
         methodology_audit=methodology_audit,
+        pilot_ground_truth={"digest": "test-pilot-ground-truth"},
     )
     rebuilt_manifest = build_manifest(
         config=config,
@@ -575,9 +644,10 @@ def test_manifest_freezes_evidence_and_rejects_reconstruction_drift(
         pilot=pilot,
         canary=canary,
         methodology_audit=methodology_audit,
+        pilot_ground_truth={"digest": "test-pilot-ground-truth"},
     )
 
-    assert manifest["schema_version"] == 3
+    assert manifest["schema_version"] == 4
     assert manifest == rebuilt_manifest
     assert manifest["evidence_freeze"]["signature"]
     assert len(manifest["evidence_freeze"]["packages"]) == len(packages)

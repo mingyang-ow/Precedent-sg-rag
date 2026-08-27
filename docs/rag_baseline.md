@@ -12,14 +12,17 @@ verified evidence that identified *Ahmed Salim v Public Prosecutor* as authority
 diminished-responsibility test. The model incorrectly abstained because the prompt did not clearly
 separate precedent relevance from ultimate factual application.
 
-The oracle, abstention, and prompt-sufficiency methodology is now repaired offline. No API calls
-were made during this prompt repair. The current decision is:
+The oracle, abstention, and prompt-sufficiency methodology is now repaired offline. The repaired
+`rag-v2` canary answered correctly on the same Ahmed Salim evidence. The ten retrieved packages in
+the frozen 12-case pilot were then manually adjudicated, blind to their model outputs. No API calls
+were made during adjudication. The current decision is:
 
-> **PROMPT METHODOLOGY REPAIRED OFFLINE — ONE-CALL CANARY HOLD**
+> **PILOT GROUND TRUTH FROZEN — PILOT COMPOSITION REVIEW HOLD**
 
-The hold is deliberate: paid inference requires explicit approval after reviewing the request and
-cost forecast below. This document must be updated with measured results and a manual semantic
-review before the production-engineering gate can be reconsidered.
+All ten retrieved packages were judged answerable, so all 12 pilot records now expect an answer.
+The experiment is technically executable, but this frozen sample cannot measure abstention
+behavior. Paid inference remains unapproved pending a decision whether to run it as an answer-only
+generation diagnostic or separately revise pilot sampling.
 
 ## Scope and model choice
 
@@ -34,7 +37,8 @@ configuration, while every cache record stores the actual `response.model` retur
 
 This is separately billed OpenAI API usage. It does not consume a ChatGPT subscription or a Codex
 interactive allowance. The prior failed pilot attempt made 12 rejected API requests with no model
-output. Two later canaries each made exactly one successful request. This repair made none.
+output. Three later canaries each made exactly one successful request, including the successful
+`rag-v2` Ahmed Salim canary. The blind adjudication made no API requests.
 
 ## Frozen experiment
 
@@ -64,7 +68,7 @@ retrieved prompt-evidence signatures exactly match the prior manifest.
 Facts-only is the primary product-facing diagnostic. Facts-plus-principle is retained as an
 assisted-query comparison, not as evidence available to a real user at prediction time.
 
-The schema-v3 manifest at `experiments/samples/rag_baseline.json` preserves query IDs, strata,
+The schema-v4 manifest at `experiments/samples/rag_baseline.json` preserves query IDs, strata,
 conditions, depths, the run signature, and cost forecast without redistributing prompt passages.
 It also freezes evidence origin and gold-row provenance, expected-action labels, ordered passage
 digests, per-package model-visible evidence signatures, exact rendered-input signatures, and one
@@ -74,9 +78,12 @@ Full prompts, evidence, outputs, provider metadata, latency, token use, and esti
 cached per record under ignored `data/processed/generation/` paths.
 
 Prompt `rag-v2` has signature
-`29fa06887d945fd91959c89b6d9637d0cb732beb21ae4f5d2bd001aa9e3446be`, producing run
-signature `b1ce0f7b4a99cc4e33f47a81`. The prompt text and version are part of the cache identity. The
-global evidence signature remains
+`29fa06887d945fd91959c89b6d9637d0cb732beb21ae4f5d2bd001aa9e3446be`. The blind pilot
+adjudication is frozen separately as `pilot-sufficiency-v1` with digest
+`1d603177732e892f150cdffead63e85242b2b865b8e8dcc22dd56182dbc4fd03`. Prompt text, versioned
+settings, evidence, and the ground-truth digest are part of the cache identity, producing run
+signature `12498ed3148d7ae999e76150`. This new identity prevents the prior canary cache from reducing
+a later approved pilot below 12 fresh calls. The global evidence signature remains
 `39d7ce7a0e8a0164712b4dbf1b4fa042b49222c1b6f409f800d0e95805cd29fe`.
 
 The 96 sampled query IDs and their strata are byte-for-byte unchanged from methodology v1. Of the
@@ -84,6 +91,16 @@ The 96 sampled query IDs and their strata are byte-for-byte unchanged from metho
 became `unknown_needs_review`, as did two oracle rows whose labelled citation relationship could
 not be verified in the supplied paragraph. The other 62 oracle rows are verified answer cases. The
 ignored `data/processed/rag_sufficiency_review.json` file contains the private review queue.
+
+The separate, version-controlled `experiments/samples/rag_pilot_adjudication.json` artifact covers
+only the ten retrieved pilot packages and was created from query, evidence, and source metadata
+without reading their model outputs. It records the target-presence diagnostic, manual sufficiency,
+expected action, rationale, cited evidence passages, support granularity, reviewer, date, version,
+and borderline status. All ten are `answer`; four had target present and six did not. Two are
+borderline: `12e71dc2c2cb5a60f8075814` is useful mainly as a factual/sentencing comparator, and
+`02bba523326c5266cf09e44e` supplies the Ladd test and attenuation principle but not the
+committal-specific power. The other eight were sufficiently direct. The resulting full-pilot
+ground truth is 12 answer and zero abstain.
 
 ## Prompt and output contract
 
@@ -169,8 +186,10 @@ cached input tokens, and $1.20 per million output tokens.
 
 The 12-call pilot contains six records per query mode: an answer-expected oracle warm-success
 record, target-present retrieved records at depths 1 and 5, a warm retrieval-failure at depth 5,
-and cold-start evidence at depths 1 and 5. The five retrieved records per mode remain pending
-sufficiency review; target presence alone does not determine their expected action.
+and cold-start evidence at depths 1 and 5. Blind manual review found all five retrieved records per
+mode sufficient for a bounded precedent answer. Target presence still does not determine their
+expected action: six of the ten retrieved packages lack the labelled target but contain other
+useful supplied authority.
 
 Automatic SDK retries are disabled (`max_retries=0`), so 352 logical calls mean 352 planned HTTP
 attempts. Cache resumption makes completed records free to reuse. The command exits non-zero when
@@ -179,7 +198,7 @@ one later logical call for each failed cached record; it is never enabled by def
 
 ## Important assumptions and limitations
 
-Three limitations must not be mistaken for ground truth:
+Four limitations must not be mistaken for ground truth:
 
 1. Oracle gold context is the citation passage from the test-query row, not the authoritative full
    text of the cited judgment. Two sampled rows do not textually verify their labelled citation
@@ -189,6 +208,9 @@ Three limitations must not be mistaken for ground truth:
    irrelevant historical proposition. Manual sufficiency review is required for retrieved context.
 3. Exact-quote validation proves traceability, not that a claim is entailed by the quote. The manual
    semantic subset is part of the completion gate.
+4. The fixed pilot has no abstain-expected record after blind adjudication. It can test answer
+   generation, grounding, oracle-versus-retrieved behavior, and facts-only versus assisted queries,
+   but it cannot estimate abstention correctness or inappropriate-answer rate.
 
 The API does not expose a seed in this implementation, and temperature is omitted. Sample and
 evidence selection are deterministic; model wording is not guaranteed byte-for-byte repeatable.
@@ -205,11 +227,14 @@ uv run sg-legal-rag-evaluate
 The billed path requires the explicit `--execute` flag. It must not be used until a new request plan
 has been approved. `--canary` restricts that path to the manually verified Ahmed Salim
 `oracle_gold_context` package `0362866e90548d293669f8d3`; `--pilot` restricts it to the fixed
-12-record pilot. No inference is authorized by this repair.
+12-record pilot. Before creating the API client, execution reconstructs and verifies both evidence
+and blind ground-truth digests. No inference is authorized by this adjudication.
 
 ## Completion gate
 
 Proceed to production engineering only if retrieved-context grounded end-to-end success and
 abstention behavior are credible on both query modes, the oracle/retrieval gap is understood, the
 manual semantic review finds no material unsupported-claim pattern, and cold-start limitations can
-be surfaced honestly. Until inference and that review are complete, the gate remains closed.
+be surfaced honestly. The answer-only pilot cannot satisfy the abstention part of this gate on its
+own. Until inference and an independently approved abstention evaluation are complete, the gate
+remains closed.

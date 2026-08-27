@@ -213,11 +213,22 @@ def test_prompt_text_changes_run_signature_without_changing_evidence(
         manual_review_records=36,
     )
     evidence_before = evidence_freeze((package,))
-    signature_before = benchmark_module._signature(config, (package,))
+    signature_before = benchmark_module._signature(
+        config,
+        (package,),
+        pilot_ground_truth_digest="ground-truth-digest",
+    )
 
     monkeypatch.setattr(benchmark_module, "SYSTEM_INSTRUCTIONS", SYSTEM_INSTRUCTIONS + " changed")
 
-    assert benchmark_module._signature(config, (package,)) != signature_before
+    assert (
+        benchmark_module._signature(
+            config,
+            (package,),
+            pilot_ground_truth_digest="ground-truth-digest",
+        )
+        != signature_before
+    )
     assert evidence_freeze((package,)) == evidence_before
 
 

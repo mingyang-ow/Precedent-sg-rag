@@ -20,6 +20,12 @@ from sg_legal_rag.retrieval.corpus_repair_benchmark import (
     load_config as load_corpus_config,
 )
 
+from .adjudication import (
+    PilotAdjudication,
+    adjudication_digest,
+    apply_adjudication,
+    load_pilot_adjudication,
+)
 from .evaluation import evaluate_record, grouped_summaries
 from .evidence import (
     EvidenceCondition,
@@ -46,6 +52,9 @@ from .schema import GroundedAnswer
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIG = PROJECT_ROOT / "configs" / "rag_baseline.toml"
 DEFAULT_MANIFEST = PROJECT_ROOT / "experiments" / "samples" / "rag_baseline.json"
+DEFAULT_PILOT_ADJUDICATION = (
+    PROJECT_ROOT / "experiments" / "samples" / "rag_pilot_adjudication.json"
+)
 DEFAULT_OUTPUT = PROJECT_ROOT / "experiments" / "results" / "rag_baseline.json"
 DEFAULT_CACHE = PROJECT_ROOT / "data" / "processed" / "generation"
 DEFAULT_MANUAL_REVIEW = PROJECT_ROOT / "data" / "processed" / "rag_manual_review.json"
@@ -179,12 +188,18 @@ def _config_signature_payload(config: RAGConfig) -> dict[str, Any]:
     }
 
 
-def _signature(config: RAGConfig, packages: tuple[EvidencePackage, ...]) -> str:
+def _signature(
+    config: RAGConfig,
+    packages: tuple[EvidencePackage, ...],
+    *,
+    pilot_ground_truth_digest: str,
+) -> str:
     frozen_evidence = evidence_freeze(packages)
     payload = {
-        "cache_schema": 3,
+        "cache_schema": 4,
         "config": _config_signature_payload(config),
         "evidence_signature": frozen_evidence["signature"],
+        "pilot_ground_truth_digest": pilot_ground_truth_digest,
     }
     return _canonical_digest(payload)[:24]
 
@@ -248,7 +263,7 @@ def estimate_tokens_and_cost(
 
 
 def select_pilot(packages: tuple[EvidencePackage, ...]) -> tuple[EvidencePackage, ...]:
-    """Two-mode, 12-call pilot spanning oracle, retrieval, abstention, and k endpoints."""
+    """Two-mode, 12-call pilot spanning oracle, retrieval strata, and k endpoints."""
 
     chosen: list[EvidencePackage] = []
     modes = sorted({package.query_mode for package in packages})
@@ -296,6 +311,75 @@ def select_pilot(packages: tuple[EvidencePackage, ...]) -> tuple[EvidencePackage
     if len({package.package_id for package in chosen}) != len(chosen):
         raise ValueError("pilot package selection contains duplicates")
     return tuple(chosen)
+
+
+def validate_pilot_adjudication(
+    adjudication: PilotAdjudication,
+    pilot: tuple[EvidencePackage, ...],
+) -> tuple[tuple[EvidencePackage, ...], dict[str, Any]]:
+    """Validate and apply the separately frozen pilot ground truth."""
+
+    pilot_ids = tuple(package.package_id for package in pilot)
+    if adjudication.pilot_package_ids != pilot_ids:
+        raise ValueError("pilot adjudication package IDs or ordering changed")
+    pilot_freeze = evidence_freeze(pilot)
+    if adjudication.pilot_evidence_signature != pilot_freeze["signature"]:
+        raise ValueError("pilot adjudication evidence signature changed")
+
+    retrieved = tuple(
+        package for package in pilot if package.condition is EvidenceCondition.RETRIEVED
+    )
+    retrieved_ids = tuple(package.package_id for package in retrieved)
+    record_ids = tuple(record.package_id for record in adjudication.records)
+    if record_ids != retrieved_ids:
+        raise ValueError("pilot adjudication must cover retrieved packages in pilot order")
+    retrieved_freeze = evidence_freeze(retrieved)
+    if adjudication.retrieved_pilot_evidence_signature != retrieved_freeze["signature"]:
+        raise ValueError("retrieved pilot adjudication evidence signature changed")
+
+    records_by_package = {record.package_id: record for record in adjudication.records}
+    packages_by_id = {package.package_id: package for package in retrieved}
+    for record in adjudication.records:
+        package = packages_by_id[record.package_id]
+        if record.target_present != package.target_present:
+            raise ValueError(f"adjudication target_present mismatch: {record.package_id}")
+        evidence_ids = {item.evidence_id for item in package.evidence}
+        if not set(record.supporting_evidence_ids).issubset(evidence_ids):
+            raise ValueError(f"adjudication cites unknown evidence: {record.package_id}")
+
+    labeled_pilot = tuple(apply_adjudication(package, records_by_package) for package in pilot)
+    unresolved = [
+        package.package_id
+        for package in labeled_pilot
+        if package.expected_action is ExpectedAction.UNKNOWN_NEEDS_REVIEW
+    ]
+    if unresolved:
+        raise ValueError(f"pilot ground truth remains unresolved: {unresolved}")
+
+    digest = adjudication_digest(adjudication)
+    metadata = {
+        "schema_version": adjudication.schema_version,
+        "adjudication_version": adjudication.adjudication_version,
+        "digest_algorithm": "sha256-canonical-json-v1",
+        "digest": digest,
+        "blinded_to_model_outputs": adjudication.blinded_to_model_outputs,
+        "reviewer": adjudication.reviewer,
+        "review_date": adjudication.review_date.isoformat(),
+        "adjudicated_retrieved_records": len(adjudication.records),
+        "retrieved_package_ids": list(record_ids),
+        "retrieved_expected_action_counts": dict(
+            sorted(Counter(record.expected_action.value for record in adjudication.records).items())
+        ),
+        "pilot_expected_action_counts": dict(
+            sorted(Counter(package.expected_action.value for package in labeled_pilot).items())
+        ),
+        "borderline_package_ids": [
+            record.package_id for record in adjudication.records if record.borderline
+        ],
+        "pilot_evidence_signature": pilot_freeze["signature"],
+        "retrieved_pilot_evidence_signature": retrieved_freeze["signature"],
+    }
+    return labeled_pilot, metadata
 
 
 def select_canary(packages: tuple[EvidencePackage, ...]) -> EvidencePackage:
@@ -419,10 +503,11 @@ def build_manifest(
     pilot: tuple[EvidencePackage, ...],
     canary: EvidencePackage,
     methodology_audit: dict[str, Any],
+    pilot_ground_truth: dict[str, Any],
 ) -> dict[str, Any]:
     frozen_evidence = evidence_freeze(packages)
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "run_signature": signature,
         "protocol": "bounded_grounded_rag_methodology_v2",
         "methodology_correction": {
@@ -487,6 +572,7 @@ def build_manifest(
             "package_ids": [package.package_id for package in pilot],
             "counts": _counts(pilot),
             "evidence_signature": evidence_freeze(pilot)["signature"],
+            "ground_truth": pilot_ground_truth,
         },
         "canary": {
             "logical_requests": 1,
@@ -668,7 +754,6 @@ def prepare(
     RAGConfig,
     tuple[Any, ...],
     tuple[EvidencePackage, ...],
-    str,
     dict[str, Any],
 ]:
     corpus_config = load_corpus_config(corpus_config_path)
@@ -714,7 +799,6 @@ def prepare(
         rag_config,
         selected,
         packages,
-        _signature(rag_config, packages),
         methodology_audit,
     )
 
@@ -728,6 +812,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--corpus-config", type=Path, default=DEFAULT_CORPUS_CONFIG)
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
+    parser.add_argument("--pilot-adjudication", type=Path, default=DEFAULT_PILOT_ADJUDICATION)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE)
     parser.add_argument("--manual-review", type=Path, default=DEFAULT_MANUAL_REVIEW)
@@ -758,13 +843,20 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         frozen_manifest = load_json(args.manifest) if args.execute else None
-        config, selected, packages, signature, methodology_audit = prepare(
+        config, selected, packages, methodology_audit = prepare(
             data_dir=args.data_dir,
             splits=args.splits,
             corpus_config_path=args.corpus_config,
             rag_config_path=args.config,
         )
         pilot = select_pilot(packages)
+        adjudication = load_pilot_adjudication(args.pilot_adjudication)
+        labeled_pilot, pilot_ground_truth = validate_pilot_adjudication(adjudication, pilot)
+        signature = _signature(
+            config,
+            packages,
+            pilot_ground_truth_digest=pilot_ground_truth["digest"],
+        )
         canary = select_canary(packages)
         manifest = build_manifest(
             config=config,
@@ -774,6 +866,7 @@ def main(argv: list[str] | None = None) -> int:
             pilot=pilot,
             canary=canary,
             methodology_audit=methodology_audit,
+            pilot_ground_truth=pilot_ground_truth,
         )
         print(
             f"planned requests: {len(packages)}; pilot: {len(pilot)}; "
@@ -809,14 +902,27 @@ def main(argv: list[str] | None = None) -> int:
             records.append(record)
             print(f"generation {position}/{len(targets)}: {package.package_id}", flush=True)
 
+        records_by_package = {record.package_id: record for record in adjudication.records}
+        evaluation_records = [
+            record.model_copy(
+                update={"package": apply_adjudication(record.package, records_by_package)}
+            )
+            for record in records
+        ]
+        if args.pilot and tuple(record.package for record in evaluation_records) != labeled_pilot:
+            raise ValueError("generated pilot does not match frozen adjudicated pilot")
+
         result = {
             "schema_version": 2,
             "run_signature": signature,
             "evidence_signature": manifest["evidence_freeze"]["signature"],
+            "pilot_ground_truth": pilot_ground_truth,
             "scope": "canary" if args.canary else "pilot" if args.pilot else "full",
             "model": config.settings.model,
-            "aggregates": grouped_summaries(records),
-            "outcomes": [evaluate_record(record).model_dump(mode="json") for record in records],
+            "aggregates": grouped_summaries(evaluation_records),
+            "outcomes": [
+                evaluate_record(record).model_dump(mode="json") for record in evaluation_records
+            ],
             "manual_semantic_review": "pending; template written outside version control",
         }
         suffix = "_canary" if args.canary else "_pilot" if args.pilot else ""
@@ -824,7 +930,11 @@ def main(argv: list[str] | None = None) -> int:
         write_json(output, result)
         write_json(
             args.manual_review,
-            manual_review_template(records, count=config.manual_review_records, seed=config.seed),
+            manual_review_template(
+                evaluation_records,
+                count=config.manual_review_records,
+                seed=config.seed,
+            ),
         )
         print(f"wrote {output}")
         print(f"wrote private manual-review template {args.manual_review}")

@@ -13185,6 +13185,40 @@
       }
     },
     "evidence_signature": "8ee6e42f9c4faa12b30a01b70126cb9f406533791daacf2f8f03537295c60eed",
+    "ground_truth": {
+      "adjudicated_retrieved_records": 10,
+      "adjudication_version": "pilot-sufficiency-v1",
+      "blinded_to_model_outputs": true,
+      "borderline_package_ids": [
+        "12e71dc2c2cb5a60f8075814",
+        "02bba523326c5266cf09e44e"
+      ],
+      "digest": "1d603177732e892f150cdffead63e85242b2b865b8e8dcc22dd56182dbc4fd03",
+      "digest_algorithm": "sha256-canonical-json-v1",
+      "pilot_evidence_signature": "8ee6e42f9c4faa12b30a01b70126cb9f406533791daacf2f8f03537295c60eed",
+      "pilot_expected_action_counts": {
+        "answer": 12
+      },
+      "retrieved_expected_action_counts": {
+        "answer": 10
+      },
+      "retrieved_package_ids": [
+        "0ae6a4fcf31bfd744b98cb76",
+        "108d21f751d8ec90c0c94ec9",
+        "00298e089d66d64c4901df7d",
+        "12e71dc2c2cb5a60f8075814",
+        "0638f59ac08d1d74fadddce3",
+        "02bba523326c5266cf09e44e",
+        "0928e2d4e249f4350c7cbf49",
+        "0f15d4e108bfb9ec51b20fd0",
+        "3656dc5505159b1c67a40523",
+        "059151ded28fc87c4bbdad98"
+      ],
+      "retrieved_pilot_evidence_signature": "0fb29f47dd2aa58afb60aff85b842d72f92ce6092e9bec304b854e8e9abb3938",
+      "review_date": "2026-08-27",
+      "reviewer": "Codex blind manual evidence review",
+      "schema_version": 1
+    },
     "logical_requests": 12,
     "package_ids": [
       "0362866e90548d293669f8d3",
@@ -13225,8 +13259,8 @@
   "protocol": "bounded_grounded_rag_methodology_v2",
   "provider": "OpenAI Responses API",
   "reasoning_effort": "none",
-  "run_signature": "b1ce0f7b4a99cc4e33f47a81",
-  "schema_version": 3,
+  "run_signature": "12498ed3148d7ae999e76150",
+  "schema_version": 4,
   "seed": null,
   "selection": {
     "queries_per_mode_per_stratum": 16,
