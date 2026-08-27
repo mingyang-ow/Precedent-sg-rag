@@ -21,9 +21,7 @@ class ApiSettings(BaseModel):
     reasoning_effort: str = Field(default="none", min_length=1)
     verbosity: str = Field(default="low", min_length=1)
     openai_api_key: SecretStr | None = None
-    data_dir: Path = PROJECT_ROOT / "data/raw"
-    splits_path: Path = PROJECT_ROOT / "data/processed/splits_temporal.csv"
-    corpus_config_path: Path = PROJECT_ROOT / "configs/corpus_repair.toml"
+    retrieval_artifact_dir: Path = PROJECT_ROOT / "data/processed/retrieval-artifacts"
 
     @model_validator(mode="after")
     def validate_top_k_policy(self) -> ApiSettings:
@@ -43,14 +41,9 @@ class ApiSettings(BaseModel):
             "reasoning_effort": values.get("REASONING_EFFORT", "none"),
             "verbosity": values.get("VERBOSITY", "low"),
             "openai_api_key": SecretStr(api_key) if api_key else None,
-            "data_dir": values.get("PRECEDENT_DATA_DIR", str(PROJECT_ROOT / "data/raw")),
-            "splits_path": values.get(
-                "PRECEDENT_SPLITS_PATH",
-                str(PROJECT_ROOT / "data/processed/splits_temporal.csv"),
-            ),
-            "corpus_config_path": values.get(
-                "PRECEDENT_CORPUS_CONFIG",
-                str(PROJECT_ROOT / "configs/corpus_repair.toml"),
+            "retrieval_artifact_dir": values.get(
+                "PRECEDENT_RETRIEVAL_ARTIFACTS",
+                str(PROJECT_ROOT / "data/processed/retrieval-artifacts"),
             ),
         }
         return cls.model_validate(payload)

@@ -2,7 +2,7 @@
 
 ## Service boundary
 
-Phase 5 exposes the production citation contract through a deliberately small HTTP surface:
+The service exposes the production citation contract through a deliberately small HTTP surface:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -18,7 +18,8 @@ Interactive OpenAPI documentation is available at `/docs`. The service is not le
 
 ```bash
 uv sync --extra dev --extra generation --extra api
-uv run uvicorn sg_legal_rag.api.app:app --reload
+uv run sg-legal-build-retrieval-artifacts
+uv run uvicorn sg_legal_rag.api.app:app --host 127.0.0.1 --port 8000
 ```
 
 Then inspect:
@@ -45,9 +46,7 @@ Configuration comes directly from environment variables; a `.env` file is not re
 | `MAX_OUTPUT_TOKENS` | `600` | Provider output ceiling |
 | `REASONING_EFFORT` | `none` | Provider reasoning setting |
 | `VERBOSITY` | `low` | Provider output verbosity |
-| `PRECEDENT_DATA_DIR` | `data/raw` | SG-LegalCite source directory |
-| `PRECEDENT_SPLITS_PATH` | `data/processed/splits_temporal.csv` | Temporal split artifact |
-| `PRECEDENT_CORPUS_CONFIG` | `configs/corpus_repair.toml` | Leakage-safe corpus settings |
+| `PRECEDENT_RETRIEVAL_ARTIFACTS` | `data/processed/retrieval-artifacts` | Prepared immutable retrieval bundle |
 
 Readiness uses a partial policy. If local retrieval assets and configuration are valid but
 `OPENAI_API_KEY` is absent, `/ready` returns HTTP 200 with `status: partial`: `/retrieve` is ready
@@ -56,9 +55,10 @@ and `/answer` returns 503. Missing retrieval assets produce HTTP 503 with `statu
 ## Retrieval and answer flow
 
 `POST /retrieve` accepts bounded facts, an optional principle, and an optional `top_k`. The service
-canonicalizes the query, lazily loads the leakage-safe historical passage corpus and BM25 index,
-and returns exact application-owned `EvidenceItem` text and provenance. It does not expose
-retriever tuning knobs.
+canonicalizes the query and uses the verified passage corpus and restored BM25 state loaded during
+application construction. It returns exact application-owned `EvidenceItem` text and provenance
+and does not expose retriever tuning knobs. Normal requests never read the source CSV, reconstruct
+the historical corpus, tokenize stored passages, or rebuild BM25.
 
 `POST /answer` uses the same retrieval path, then invokes an injected
 `ProductionGenerationProvider`, validates `production-citation-v1`, and resolves the source through
@@ -79,7 +79,7 @@ The default OpenAI adapter is lazy. Even when credentials exist, constructing th
 not construct an OpenAI client. Client construction and the provider request occur only inside an
 explicit `/answer` operation. Tests inject a fake provider and require no network access.
 
-The retrieval adapter replaces the historical full-paragraph digest with a SHA-256 digest of the
+The artifact builder replaces the historical full-paragraph digest with a SHA-256 digest of the
 exact bounded passage displayed by the production application. Historical frozen evidence and
 signatures are not changed.
 
@@ -116,10 +116,7 @@ metrics backend is deferred to the observability phase.
 ## Bounded technical debt
 
 Evidence IDs remain local to one package (`E1`, `E2`, ...). Responses therefore retain the
-top-level `package_id`, while citations include `evidence_id` and `passage_digest`. Persistent
-evidence storage is deferred to Phase 6.
-
-The current production retriever lazily rebuilds the in-memory historical passage corpus and BM25
-index from local assets on the first request. Phase 6 should persist or cache that initialized
-state for faster cold starts. The citation resolver proves provenance and referential integrity;
-it does not independently prove semantic entailment.
+top-level `package_id`, while citations include `evidence_id` and `passage_digest`. A persistent
+production evidence store remains deferred. The citation resolver proves provenance and
+referential integrity; it does not independently prove semantic entailment. See
+[`deployment.md`](deployment.md) for the artifact and container contract.

@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
-from threading import Lock
 from typing import Protocol
 
 from sg_legal_rag.generation.evidence import EvidenceItem, retrieve_passages
-from sg_legal_rag.retrieval.bm25 import BM25Index
-from sg_legal_rag.retrieval.corpus_repair import CorpusRepairDataset, load_corpus_repair_dataset
-from sg_legal_rag.retrieval.corpus_repair_benchmark import load_config
+from sg_legal_rag.retrieval.artifacts import (
+    LoadedRetrievalArtifacts,
+    RetrievalArtifactError,
+    RetrievalArtifactIdentity,
+    load_retrieval_artifacts,
+)
+
+from .observability import log_event
 
 
 class EvidenceRetriever(Protocol):
@@ -21,67 +24,37 @@ class RetrievalUnavailable(RuntimeError):
     pass
 
 
-class LazyPassageBM25Retriever:
-    """Load the leakage-safe historical passage corpus only on the first retrieval request."""
+class PreparedPassageBM25Retriever:
+    """Verify and load immutable passage-BM25 state during service construction."""
 
-    def __init__(self, *, data_dir: Path, splits_path: Path, config_path: Path) -> None:
-        self.data_dir = data_dir
-        self.splits_path = splits_path
-        self.config_path = config_path
-        self._dataset: CorpusRepairDataset | None = None
-        self._index: BM25Index | None = None
-        self._lock = Lock()
+    def __init__(self, *, artifact_dir: Path) -> None:
+        self._loaded: LoadedRetrievalArtifacts | None = None
+        self._failure: str | None = None
+        try:
+            self._loaded = load_retrieval_artifacts(artifact_dir)
+        except (OSError, RetrievalArtifactError, TypeError, ValueError) as error:
+            self._failure = str(error)
+            log_event("retrieval_artifacts_unavailable", artifact_failure=self._failure)
+        else:
+            log_event(
+                "retrieval_artifacts_loaded",
+                artifact_digest=self._loaded.identity.manifest_digest,
+                artifact_documents=self._loaded.identity.document_count,
+                artifact_load_ms=round(self._loaded.identity.load_ms, 3),
+            )
 
     def is_ready(self) -> bool:
-        csv_path = self.data_dir / "COMBINED_ALL_CASES_FINAL_V2.csv"
-        if (
-            not csv_path.is_file()
-            or not self.splits_path.is_file()
-            or not self.config_path.is_file()
-        ):
-            return False
-        try:
-            load_config(self.config_path)
-        except (OSError, TypeError, ValueError):
-            return False
-        return True
+        return self._loaded is not None
 
-    def _initialize(self) -> tuple[CorpusRepairDataset, BM25Index]:
-        if self._dataset is not None and self._index is not None:
-            return self._dataset, self._index
-        with self._lock:
-            if self._dataset is not None and self._index is not None:
-                return self._dataset, self._index
-            if not self.is_ready():
-                raise RetrievalUnavailable("required historical retrieval assets are unavailable")
-            config = load_config(self.config_path)
-            dataset = load_corpus_repair_dataset(
-                self.data_dir / "COMBINED_ALL_CASES_FINAL_V2.csv",
-                self.splits_path,
-                evidence_cutoff_year=config.evidence_cutoff_year,
-                max_passage_chars=config.max_passage_chars,
-                max_profile_passages=config.max_profile_passages,
-                max_profile_identifier_chars=config.max_profile_identifier_chars,
-                max_profile_context_chars=config.max_profile_context_chars,
-                max_profile_chars=config.max_profile_chars,
-            )
-            index = BM25Index(
-                tuple(context.text for context in dataset.contexts),
-                k1=config.k1,
-                b=config.b,
-            )
-            self._dataset = dataset
-            self._index = index
-            return dataset, index
+    def artifact_identity(self) -> RetrievalArtifactIdentity | None:
+        return self._loaded.identity if self._loaded is not None else None
 
     def retrieve(self, query_text: str, *, top_k: int) -> tuple[EvidenceItem, ...]:
-        dataset, index = self._initialize()
-        items = retrieve_passages(index, dataset, query_text, top_k=top_k)
-        # Historical contexts may digest the full paragraph while displaying a bounded window.
-        # Production integrity binds the exact application-displayed passage instead.
-        return tuple(
-            item.model_copy(
-                update={"passage_digest": hashlib.sha256(item.passage.encode("utf-8")).hexdigest()}
-            )
-            for item in items
+        if self._loaded is None:
+            raise RetrievalUnavailable("prepared retrieval artifacts are unavailable")
+        return retrieve_passages(
+            self._loaded.index,
+            self._loaded.corpus,
+            query_text,
+            top_k=top_k,
         )

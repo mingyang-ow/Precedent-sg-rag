@@ -120,6 +120,10 @@ class VersionResponse(BaseModel):
     prompt_version: Literal["rag-production-v1"] = "rag-production-v1"
     prompt_signature: str
     schema_signature: str
+    retrieval_artifact_version: str | None
+    retrieval_artifact_digest: str | None
+    retrieval_document_count: int | None
+    retrieval_load_ms: float | None
     historical_contract_preserved: bool = True
 
 

@@ -104,12 +104,17 @@ async def ready(request: Request, response: Response) -> ReadinessResponse:
     response_model=VersionResponse,
     summary="Service and contract versions",
 )
-async def version() -> VersionResponse:
+async def version(request: Request) -> VersionResponse:
+    identity = _service(request).artifact_identity()
     return VersionResponse(
         citation_contract=PRODUCTION_CITATION_CONTRACT_VERSION,
         prompt_version=PRODUCTION_PROMPT_VERSION,
         prompt_signature=production_prompt_signature(),
         schema_signature=production_schema_signature(),
+        retrieval_artifact_version=(identity.artifact_version if identity is not None else None),
+        retrieval_artifact_digest=(identity.manifest_digest if identity is not None else None),
+        retrieval_document_count=(identity.document_count if identity is not None else None),
+        retrieval_load_ms=(identity.load_ms if identity is not None else None),
     )
 
 

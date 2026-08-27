@@ -25,18 +25,26 @@ legal facts + optional principle
   benchmark metadata before expansion.
 - Production answers reference immutable evidence; the model never controls displayed source text.
 - `/retrieve` works without model credentials; `/answer` uses an injectable provider boundary.
+- Startup verifies and restores immutable passage-BM25 artifacts; requests never rebuild the
+  source corpus or index.
 
-## API quick start
+## Docker quick start
 
 ```bash
-uv sync --extra dev --extra generation --extra api
-uv run uvicorn sg_legal_rag.api.app:app --reload
+uv sync --locked --extra generation --extra api
+uv run sg-legal-build-retrieval-artifacts
+docker build --tag precedent-sg-rag:local .
+docker run --rm \
+  --mount type=bind,src="$(pwd)/data/processed/retrieval-artifacts",dst=/opt/precedent/retrieval-artifacts,readonly \
+  --publish 8000:8000 precedent-sg-rag:local
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/ready
 ```
 
 Open `http://127.0.0.1:8000/docs`, or call `GET /health`, `GET /ready`, `POST /retrieve`, and
 `POST /answer`. Starting the service and checking readiness never call a model provider.
 
-## Current scope: Phase 5 FastAPI service
+## Current scope: Phase 6 reproducible runtime
 
 - Reproducible download from an immutable Hugging Face revision.
 - Streaming schema, integrity, completeness, and extraction-quality checks.
@@ -59,6 +67,8 @@ Open `http://127.0.0.1:8000/docs`, or call `GET /health`, `GET /ready`, `POST /r
 - Explicit abstention preserved across the historical and production contracts.
 - Typed health, readiness, retrieval, answer, version, and error responses.
 - Request IDs, structured privacy-conscious logs, and per-stage latency instrumentation.
+- Deterministic, digest-verified corpus and BM25 artifacts loaded without request-time rebuilding.
+- Locked, non-root, read-only-capable container with a separately mounted artifact bundle.
 - Layered retrieval, generation, citation, hallucination, and abstention evaluation.
 
 ## Quick start
@@ -124,6 +134,8 @@ The frozen generation protocol, request/cost forecast, historical output contrac
 results are in [docs/rag_baseline.md](docs/rag_baseline.md). The application-owned evidence-ID
 design is in [docs/production_citation_contract.md](docs/production_citation_contract.md). Service
 configuration, endpoints, error mapping, and local startup are in [docs/api.md](docs/api.md).
+Artifact construction, failure behavior, Docker usage, and security posture are in
+[docs/deployment.md](docs/deployment.md).
 
 ## Roadmap
 
@@ -139,8 +151,9 @@ configuration, endpoints, error mapping, and local startup are in [docs/api.md](
 7. Evidence-ID production citation contract. ✓ Application-owned source resolution and safe
    referential validation complete.
 8. FastAPI service. ✓ Typed offline-tested HTTP boundary with injectable provider.
-9. Docker plus persistence/caching. Next.
-10. Observability and interviewer-facing demo polish.
+9. Docker plus persistent retrieval artifacts. Implementation complete; executable container gate
+   pending CI because this workstation has no container runtime.
+10. Observability and interviewer-facing demo polish. Next after the Docker gate passes.
 
 Dataset material is CC BY 4.0 and remains under its upstream licence. Project code is MIT
 licensed. Do not treat the project licence as relicensing the dataset or source judgments.

@@ -17,12 +17,13 @@ from sg_legal_rag.generation.production_contract import (
     ResolvedProductionAnswer,
     resolve_production_answer,
 )
+from sg_legal_rag.retrieval.artifacts import RetrievalArtifactIdentity
 
 from .provider import (
     OpenAIProductionProvider,
     ProductionGenerationProvider,
 )
-from .retrieval import EvidenceRetriever, LazyPassageBM25Retriever, RetrievalUnavailable
+from .retrieval import EvidenceRetriever, PreparedPassageBM25Retriever, RetrievalUnavailable
 from .settings import ApiSettings
 
 
@@ -74,6 +75,10 @@ class RAGApplicationService:
 
     def readiness(self) -> tuple[bool, bool]:
         return self.retriever.is_ready(), self.provider is not None
+
+    def artifact_identity(self) -> RetrievalArtifactIdentity | None:
+        identity = getattr(self.retriever, "artifact_identity", None)
+        return identity() if identity is not None else None
 
     def retrieve(
         self, *, facts: str, principle: str | None, top_k: int | None
@@ -186,10 +191,8 @@ def _production_package(
 
 
 def build_default_service(settings: ApiSettings) -> RAGApplicationService:
-    retriever = LazyPassageBM25Retriever(
-        data_dir=settings.data_dir,
-        splits_path=settings.splits_path,
-        config_path=settings.corpus_config_path,
+    retriever = PreparedPassageBM25Retriever(
+        artifact_dir=settings.retrieval_artifact_dir,
     )
     provider = (
         OpenAIProductionProvider(
