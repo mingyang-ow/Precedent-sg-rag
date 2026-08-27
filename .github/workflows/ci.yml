@@ -41,6 +41,11 @@ jobs:
         run: uv sync --locked --extra generation --python 3.12
       - name: Build deterministic smoke artifacts
         run: uv run python tests/build_smoke_retrieval_artifacts.py /tmp/precedent-artifacts
+      - name: Inspect published artifact permissions
+        run: |
+          stat --format='%A %a %u:%g %n' /tmp/precedent-artifacts
+          find /tmp/precedent-artifacts -maxdepth 1 -type f \
+            -exec stat --format='%A %a %u:%g %n' {} +
       - name: Build image
         run: docker build --tag precedent-sg-rag:ci .
       - name: Verify configured user is non-root
@@ -50,22 +55,54 @@ jobs:
           docker run --detach --name precedent-ci --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m
           --volume /tmp/precedent-artifacts:/opt/precedent/retrieval-artifacts:ro
           --publish 8000:8000 precedent-sg-rag:ci
+      - name: Verify non-root artifact access
+        run: |
+          docker exec precedent-ci id
+          docker exec precedent-ci \
+            stat --format='%A %a %u:%g %n' /opt/precedent/retrieval-artifacts
+          docker exec precedent-ci \
+            test -r /opt/precedent/retrieval-artifacts/manifest.json
+          docker exec precedent-ci \
+            test ! -w /opt/precedent/retrieval-artifacts
+          docker exec precedent-ci \
+            test ! -w /opt/precedent/retrieval-artifacts/manifest.json
       - name: Smoke health, readiness, and retrieval
         run: |
+          ready_status=000
           for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:8000/ready >/tmp/ready.json; then
+            if ready_status="$(curl --silent --show-error --output /tmp/ready.json \
+              --write-out '%{http_code}' http://127.0.0.1:8000/ready)"; then
+              if [ "$ready_status" = 200 ]; then
+                break
+              fi
+            else
+              ready_status=000
+            fi
+            if [ "$attempt" = 30 ]; then
               break
             fi
             sleep 1
           done
-          curl --fail --silent http://127.0.0.1:8000/health
+          echo "Readiness HTTP status: $ready_status"
+          if [ -f /tmp/ready.json ]; then
+            echo "Readiness response body:"
+            sed -n '1,40p' /tmp/ready.json
+          fi
+          test "$ready_status" = 200
+          curl --fail --silent --show-error http://127.0.0.1:8000/health
           grep --quiet '"retrieval":true' /tmp/ready.json
-          curl --fail --silent --header 'Content-Type: application/json' \
+          curl --fail --silent --show-error --header 'Content-Type: application/json' \
             --data '{"facts":"objective contract","top_k":1}' \
             http://127.0.0.1:8000/retrieve | grep --quiet '"case_id":"case:0"'
-      - name: Show container logs on failure
+      - name: Show safe diagnostics on failure
         if: failure()
-        run: docker logs precedent-ci
+        run: |
+          echo "Artifact permissions and ownership:"
+          stat --format='%A %a %u:%g %n' /tmp/precedent-artifacts
+          find /tmp/precedent-artifacts -maxdepth 1 -type f \
+            -exec stat --format='%A %a %u:%g %n' {} +
+          echo "Container logs:"
+          docker logs precedent-ci
       - name: Stop service
         if: always()
         run: docker rm --force precedent-ci

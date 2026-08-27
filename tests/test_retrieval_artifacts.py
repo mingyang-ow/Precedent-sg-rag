@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import stat
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,8 @@ from sg_legal_rag.retrieval.artifacts import (
     BM25_FILES,
     CORPUS_FILE,
     MANIFEST_FILE,
+    PUBLISHED_DIRECTORY_MODE,
+    PUBLISHED_FILE_MODE,
     RetrievalArtifactError,
     RetrievalBuildProvenance,
     load_retrieval_artifacts,
@@ -144,6 +147,41 @@ def test_bundle_and_manifest_are_deterministic(
         assert (first / file_name).read_bytes() == (second / file_name).read_bytes()
 
 
+def test_published_bundle_is_cross_uid_readable_and_loads_read_only(
+    tmp_path: Path,
+    corpus: CorpusRepairDataset,
+    provenance: RetrievalBuildProvenance,
+) -> None:
+    path, _ = _bundle(tmp_path / "bundle", corpus, provenance)
+
+    directory_mode = stat.S_IMODE(path.stat().st_mode)
+    assert directory_mode == PUBLISHED_DIRECTORY_MODE
+    assert directory_mode & stat.S_IROTH
+    assert directory_mode & stat.S_IXOTH
+    for artifact in path.iterdir():
+        file_mode = stat.S_IMODE(artifact.stat().st_mode)
+        assert file_mode == PUBLISHED_FILE_MODE
+        assert file_mode & stat.S_IROTH
+        assert file_mode & (stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH) == 0
+
+    loaded = load_retrieval_artifacts(path)
+    assert loaded.identity.document_count == len(corpus.contexts)
+
+
+def test_read_only_bundle_can_be_replaced_without_changing_content(
+    tmp_path: Path,
+    corpus: CorpusRepairDataset,
+    provenance: RetrievalBuildProvenance,
+) -> None:
+    path, _ = _bundle(tmp_path / "bundle", corpus, provenance)
+    before = {artifact.name: artifact.read_bytes() for artifact in path.iterdir()}
+
+    _bundle(path, corpus, provenance)
+
+    after = {artifact.name: artifact.read_bytes() for artifact in path.iterdir()}
+    assert after == before
+
+
 def test_loaded_retrieval_is_canonically_equivalent(
     tmp_path: Path,
     corpus: CorpusRepairDataset,
@@ -180,6 +218,7 @@ def test_corrupted_artifact_is_rejected(
     provenance: RetrievalBuildProvenance,
 ) -> None:
     path, _ = _bundle(tmp_path / "bundle", corpus, provenance)
+    (path / CORPUS_FILE).chmod(0o644)
     content = bytearray((path / CORPUS_FILE).read_bytes())
     content[-1] ^= 1
     (path / CORPUS_FILE).write_bytes(content)
@@ -205,6 +244,7 @@ def test_incompatible_version_or_configuration_is_rejected(
     message: str,
 ) -> None:
     path, _ = _bundle(tmp_path / "bundle", corpus, provenance)
+    (path / MANIFEST_FILE).chmod(0o644)
     manifest = json.loads((path / MANIFEST_FILE).read_bytes())
     target = manifest if section is None else manifest[section]
     target[field] = value

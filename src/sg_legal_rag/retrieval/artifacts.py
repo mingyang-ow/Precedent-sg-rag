@@ -33,6 +33,9 @@ DEFAULT_SPLITS = PROJECT_ROOT / "data" / "processed" / "splits_temporal.csv"
 DEFAULT_DATASET_MANIFEST = PROJECT_ROOT / "configs" / "dataset_manifest.toml"
 DEFAULT_OUTPUT = PROJECT_ROOT / "data" / "processed" / "retrieval-artifacts"
 
+PUBLISHED_DIRECTORY_MODE = 0o755
+PUBLISHED_FILE_MODE = 0o444
+
 ARTIFACT_SCHEMA_VERSION = 1
 ARTIFACT_VERSION = "passage-bm25-v1"
 RETRIEVAL_IMPLEMENTATION_VERSION = "canonical-passage-max-bm25-v1"
@@ -589,6 +592,18 @@ def _publish_staged_bundle(staging: Path, output_dir: Path) -> None:
     shutil.rmtree(backup)
 
 
+def _set_published_permissions(staging: Path) -> None:
+    """Make a validated flat bundle readable without making its files writable."""
+
+    for artifact in staging.iterdir():
+        if not artifact.is_file():
+            raise RetrievalArtifactError(
+                f"retrieval artifact bundle contains unexpected entry: {artifact.name}"
+            )
+        artifact.chmod(PUBLISHED_FILE_MODE)
+    staging.chmod(PUBLISHED_DIRECTORY_MODE)
+
+
 def _validate_score_equivalence(canonical: BM25Index, loaded: RuntimeBM25Index) -> int:
     terms = sorted(canonical.postings, key=lambda term: (len(canonical.postings[term]), term))
     positions = sorted({0, len(terms) // 4, len(terms) // 2, 3 * len(terms) // 4, len(terms) - 1})
@@ -647,6 +662,7 @@ def write_retrieval_bundle(
         (staging / MANIFEST_FILE).write_bytes(manifest_bytes)
         loaded = load_retrieval_artifacts(staging)
         equivalence_queries = _validate_score_equivalence(index, loaded.index)
+        _set_published_permissions(staging)
         _publish_staged_bundle(staging, output_dir)
     except BaseException:
         if staging.exists():
