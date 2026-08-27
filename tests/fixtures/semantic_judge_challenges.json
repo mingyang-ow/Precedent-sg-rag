@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "description": "Synthetic calibration/challenge fixtures; not production prevalence data.",
+  "fixtures": [
+    {"id": "supported-paraphrase", "type": "supported_paraphrase", "reference": "supported"},
+    {"id": "unsupported-overclaim", "type": "unsupported_overclaim", "reference": "unsupported"},
+    {"id": "negated-proposition", "type": "negated_proposition", "reference": "unsupported"},
+    {"id": "wrong-evidence-attribution", "type": "wrong_evidence_attribution", "reference": "unsupported"},
+    {"id": "authority-unsupported-conclusion", "type": "correct_authority_unsupported_conclusion", "reference": "unsupported"},
+    {"id": "mixed-one-bad-claim", "type": "mixed_answer_one_bad_claim", "reference": "unsupported"},
+    {"id": "explicit-factual-limitation", "type": "explicit_factual_limitation", "reference": "supported"},
+    {"id": "ambiguous-evidence", "type": "ambiguous_evidence", "reference": "uncertain"}
+  ]
+}

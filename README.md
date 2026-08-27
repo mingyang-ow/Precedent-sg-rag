@@ -31,6 +31,8 @@ legal facts + optional principle
   provider and citation failures, token usage, and estimated cost without user or evidence text.
 - User queries, retrieved documents, and model output are untrusted; service authentication,
   bounded cost controls, and deterministic citation checks enforce the application boundary.
+- Optional independent semantic QA checks whether generated claims follow from supplied evidence,
+  using a separate model provider and a clean-room evaluation context.
 
 ## Docker quick start
 
@@ -54,7 +56,7 @@ curl --header "X-Precedent-Metrics-Key: $PRECEDENT_METRICS_KEY" \
 Open `http://127.0.0.1:8000/docs`, or call `GET /health`, `GET /ready`, `POST /retrieve`, and
 `POST /answer`. Starting the service and checking readiness never call a model provider.
 
-## Current scope: Phase 7.5 security and abuse resistance
+## Current scope: Phase 7.6 independent semantic QA
 
 - Reproducible download from an immutable Hugging Face revision.
 - Streaming schema, integrity, completeness, and extraction-quality checks.
@@ -84,6 +86,8 @@ Open `http://127.0.0.1:8000/docs`, or call `GET /health`, `GET /ready`, `POST /r
 - Separate service and metrics credentials, bounded input/context/concurrency/timeout policies,
   an untrusted-data prompt envelope, adversarial offline fixtures, and artifact symlink rejection.
 - Layered retrieval, generation, citation, hallucination, and abstention evaluation.
+- Frozen out-of-band semantic-judge packages, strict per-record/per-claim decisions, and an
+  independently prepared reference adjudication; paid calibration remains explicitly gated.
 
 ## Quick start
 
@@ -125,6 +129,8 @@ uv run sg-legal-rag-cleanroom --export-review
 uv run sg-legal-rag-cleanroom --evaluate
 # Compare preserved strict citation metrics with deterministic evaluator-only normalization.
 uv run sg-legal-rag-citation-audit
+# Verify the frozen eight-record semantic-judge pilot without making a provider call.
+uv run sg-legal-semantic-judge --preflight
 uv run pytest
 ```
 
@@ -152,7 +158,8 @@ Artifact construction, failure behavior, Docker usage, and security posture are 
 [docs/deployment.md](docs/deployment.md). Metric semantics, privacy constraints, PromQL examples,
 and the Grafana dashboard are in [docs/observability.md](docs/observability.md). The practical threat
 model, access policy, abuse controls, adversarial tests, and residual risks are in
-[docs/security.md](docs/security.md).
+[docs/security.md](docs/security.md). The independent judge boundary, clean-room payload, frozen
+pilot, and calibration metrics are in [docs/semantic_judge.md](docs/semantic_judge.md).
 
 ## Roadmap
 
@@ -171,7 +178,8 @@ model, access policy, abuse controls, adversarial tests, and residual risks are 
 9. Docker plus persistent retrieval artifacts. ✓ Non-root/read-only CI gate complete.
 10. Operational observability. ✓ Privacy-safe Prometheus metrics and Grafana-ready dashboard.
 11. Security and abuse testing. ✓ Practical trust boundaries and offline regressions complete.
-12. Independent semantic judge. Next.
+12. Independent semantic judge. Offline implementation complete; paid eight-record calibration
+    pilot awaits explicit approval.
 
 Dataset material is CC BY 4.0 and remains under its upstream licence. Project code is MIT
 licensed. Do not treat the project licence as relicensing the dataset or source judgments.

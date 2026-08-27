@@ -1038,16 +1038,22 @@ generation = [
     { name = "pydantic" },
     { name = "tiktoken" },
 ]
+judge = [
+    { name = "httpx" },
+    { name = "pydantic" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.141.1,<0.142" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.28,<1" },
+    { name = "httpx", marker = "extra == 'judge'", specifier = ">=0.28,<1" },
     { name = "numpy", specifier = ">=2.0,<3" },
     { name = "openai", marker = "extra == 'generation'", specifier = ">=2.20,<3" },
     { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.9,<3" },
     { name = "prometheus-client", marker = "extra == 'api'", specifier = ">=0.21,<1" },
     { name = "pydantic", marker = "extra == 'generation'", specifier = ">=2.10,<3" },
+    { name = "pydantic", marker = "extra == 'judge'", specifier = ">=2.10,<3" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
     { name = "sentence-transformers", marker = "extra == 'dense'", specifier = ">=5.1,<6" },
@@ -1056,7 +1062,7 @@ requires-dist = [
     { name = "torch", marker = "extra == 'dense'", specifier = ">=2.6,<3", index = "https://download.pytorch.org/whl/cpu" },
     { name = "uvicorn", marker = "extra == 'api'", specifier = ">=0.35,<0.36" },
 ]
-provides-extras = ["dev", "dense", "generation", "api"]
+provides-extras = ["dev", "dense", "generation", "judge", "api"]
 
 [[package]]
 name = "prometheus-client"

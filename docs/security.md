@@ -164,5 +164,5 @@ future changes must assess them rather than apply unreviewed upgrades.
   concerns.
 - TLS, reverse-proxy policy, network isolation, DDoS controls, and secret management are external.
 - There is no WAF, distributed rate limiter, per-caller quota, or billing cutoff.
-- No claim of legal-system-grade security is made. Phase 7.6 may add an independent semantic judge,
-  but that evaluator will not become a security trust boundary either.
+- No claim of legal-system-grade security is made. The Phase 7.6 independent semantic judge stays
+  out of band and does not become a security trust boundary.

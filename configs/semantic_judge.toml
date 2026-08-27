@@ -1,0 +1,13 @@
+[judge]
+provider = "google_gemini_interactions"
+model = "gemini-3.7-flash"
+thinking_level = "medium"
+max_output_tokens = 600
+expected_output_tokens = 220
+timeout_seconds = 30
+automatic_retries = 0
+
+[pricing]
+snapshot_date = "2026-08-27"
+input_usd_per_million = 0.75
+output_usd_per_million = 3.75
