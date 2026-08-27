@@ -33,6 +33,7 @@ from sg_legal_rag.generation.benchmark import (
 )
 from sg_legal_rag.generation.evaluation import (
     EvaluationStatus,
+    behaviour_metrics,
     evaluate_record,
     summarize_records,
     validate_answer,
@@ -794,6 +795,62 @@ def test_provider_failure_is_not_scored_as_an_abstention_failure(
     assert summary["abstention_recall"] is None
     assert summary["inappropriate_answer_rate"] is None
     assert all_generation_attempts_failed([failed], [failed])
+
+
+def test_behaviour_confusion_matrix_excludes_operational_failures(
+    corpus: CorpusRepairDataset,
+    index: BM25Index,
+    case_to_id: dict[str, int],
+    settings: GenerationSettings,
+) -> None:
+    answer_expected = reviewed_package(
+        retrieved_package(corpus, index, case_to_id, 0), sufficient=True
+    )
+    abstain_expected = reviewed_package(
+        retrieved_package(corpus, index, case_to_id, 1), sufficient=False
+    )
+    abstention = GroundedAnswer(
+        status="insufficient_evidence",
+        recommended_case_id=None,
+        explanation="The supplied evidence does not support a precedent recommendation.",
+        claims=[],
+    )
+    records = [
+        record_for(answer_expected, answer_for(answer_expected), settings),
+        record_for(answer_expected, abstention, settings),
+        record_for(abstain_expected, answer_for(abstain_expected), settings),
+        record_for(abstain_expected, abstention, settings),
+        record_for(
+            abstain_expected,
+            None,
+            settings,
+            error="provider down",
+            response_id=None,
+        ),
+        record_for(
+            answer_expected,
+            None,
+            settings,
+            error="response did not contain a parsed answer",
+        ),
+    ]
+
+    metrics = behaviour_metrics([evaluate_record(record) for record in records])
+
+    assert metrics["confusion_matrix"] == {
+        "true_positive_answer": 1,
+        "false_negative_abstention": 1,
+        "false_positive_answer": 1,
+        "true_negative_abstention": 1,
+    }
+    assert metrics["evaluable_records"] == 4
+    assert metrics["excluded_provider_api_failures"] == 1
+    assert metrics["excluded_structured_output_failures"] == 1
+    assert metrics["answer_recall"] == 0.5
+    assert metrics["abstention_recall"] == 0.5
+    assert metrics["false_answer_rate"] == 0.5
+    assert metrics["false_abstention_rate"] == 0.5
+    assert metrics["balanced_accuracy"] == 0.5
 
 
 def test_structured_output_failure_has_its_own_status(

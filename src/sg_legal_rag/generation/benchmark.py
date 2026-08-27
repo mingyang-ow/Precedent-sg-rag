@@ -26,6 +26,11 @@ from .adjudication import (
     apply_adjudication,
     load_pilot_adjudication,
 )
+from .behaviour_pilot import (
+    load_behaviour_adjudication,
+    load_behaviour_pilot,
+    validate_behaviour_pilot,
+)
 from .evaluation import evaluate_record, grouped_summaries
 from .evidence import (
     EvidenceCondition,
@@ -55,6 +60,10 @@ DEFAULT_MANIFEST = PROJECT_ROOT / "experiments" / "samples" / "rag_baseline.json
 DEFAULT_PILOT_ADJUDICATION = (
     PROJECT_ROOT / "experiments" / "samples" / "rag_pilot_adjudication.json"
 )
+DEFAULT_BEHAVIOUR_ADJUDICATION = (
+    PROJECT_ROOT / "experiments" / "samples" / "rag_behaviour_adjudication.json"
+)
+DEFAULT_BEHAVIOUR_PILOT = PROJECT_ROOT / "experiments" / "samples" / "rag_behaviour_pilot.json"
 DEFAULT_OUTPUT = PROJECT_ROOT / "experiments" / "results" / "rag_baseline.json"
 DEFAULT_CACHE = PROJECT_ROOT / "data" / "processed" / "generation"
 DEFAULT_MANUAL_REVIEW = PROJECT_ROOT / "data" / "processed" / "rag_manual_review.json"
@@ -813,6 +822,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     parser.add_argument("--pilot-adjudication", type=Path, default=DEFAULT_PILOT_ADJUDICATION)
+    parser.add_argument(
+        "--behaviour-adjudication",
+        type=Path,
+        default=DEFAULT_BEHAVIOUR_ADJUDICATION,
+    )
+    parser.add_argument("--behaviour-manifest", type=Path, default=DEFAULT_BEHAVIOUR_PILOT)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--cache-dir", type=Path, default=DEFAULT_CACHE)
     parser.add_argument("--manual-review", type=Path, default=DEFAULT_MANUAL_REVIEW)
@@ -830,6 +845,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--canary",
         action="store_true",
         help="with --execute, run only the frozen one-record oracle canary",
+    )
+    scope.add_argument(
+        "--behaviour-pilot",
+        action="store_true",
+        help="with --execute, run only the frozen 12-record balanced behavioural pilot",
     )
     parser.add_argument(
         "--retry-errors",
@@ -868,6 +888,19 @@ def main(argv: list[str] | None = None) -> int:
             methodology_audit=methodology_audit,
             pilot_ground_truth=pilot_ground_truth,
         )
+        behaviour_manifest = None
+        behaviour_targets: tuple[EvidencePackage, ...] = ()
+        labeled_behaviour_targets: tuple[EvidencePackage, ...] = ()
+        if args.behaviour_pilot:
+            behaviour_adjudication = load_behaviour_adjudication(args.behaviour_adjudication)
+            behaviour_manifest = load_behaviour_pilot(args.behaviour_manifest)
+            behaviour_targets, labeled_behaviour_targets = validate_behaviour_pilot(
+                adjudication=behaviour_adjudication,
+                pilot=behaviour_manifest,
+                packages=packages,
+                global_manifest=frozen_manifest if frozen_manifest is not None else manifest,
+                answer_adjudication=adjudication,
+            )
         print(
             f"planned requests: {len(packages)}; pilot: {len(pilot)}; "
             f"canary: 1; run signature: {signature}"
@@ -886,38 +919,82 @@ def main(argv: list[str] | None = None) -> int:
             "verified frozen protocol and evidence signature before API generation: "
             f"{manifest['evidence_freeze']['signature']}"
         )
-        targets = (canary,) if args.canary else pilot if args.pilot else packages
+        targets = (
+            behaviour_targets
+            if args.behaviour_pilot
+            else (canary,)
+            if args.canary
+            else pilot
+            if args.pilot
+            else packages
+        )
+        execution_signature = (
+            behaviour_manifest.run_signature if behaviour_manifest is not None else signature
+        )
         generator = OpenAIResponsesGenerator()
         records: list[GenerationRecord] = []
         attempted_records: list[GenerationRecord] = []
         for position, package in enumerate(targets, start=1):
-            path = cache_path(args.cache_dir, signature, package.package_id)
-            cached = load_record(path, run_signature=signature, package_id=package.package_id)
+            path = cache_path(args.cache_dir, execution_signature, package.package_id)
+            cached = load_record(
+                path,
+                run_signature=execution_signature,
+                package_id=package.package_id,
+            )
             if cached is not None and not (args.retry_errors and cached.result.error is not None):
                 record = cached
             else:
-                record = generate_record(generator, package, config.settings, signature)
+                record = generate_record(
+                    generator,
+                    package,
+                    config.settings,
+                    execution_signature,
+                )
                 save_record(path, record)
                 attempted_records.append(record)
             records.append(record)
             print(f"generation {position}/{len(targets)}: {package.package_id}", flush=True)
 
-        records_by_package = {record.package_id: record for record in adjudication.records}
-        evaluation_records = [
-            record.model_copy(
-                update={"package": apply_adjudication(record.package, records_by_package)}
-            )
-            for record in records
-        ]
+        if args.behaviour_pilot:
+            labels_by_id = {package.package_id: package for package in labeled_behaviour_targets}
+            evaluation_records = [
+                record.model_copy(update={"package": labels_by_id[record.package.package_id]})
+                for record in records
+            ]
+        else:
+            records_by_package = {record.package_id: record for record in adjudication.records}
+            evaluation_records = [
+                record.model_copy(
+                    update={"package": apply_adjudication(record.package, records_by_package)}
+                )
+                for record in records
+            ]
         if args.pilot and tuple(record.package for record in evaluation_records) != labeled_pilot:
             raise ValueError("generated pilot does not match frozen adjudicated pilot")
 
         result = {
             "schema_version": 2,
-            "run_signature": signature,
+            "run_signature": execution_signature,
             "evidence_signature": manifest["evidence_freeze"]["signature"],
-            "pilot_ground_truth": pilot_ground_truth,
-            "scope": "canary" if args.canary else "pilot" if args.pilot else "full",
+            "pilot_ground_truth": (
+                {
+                    "pilot_version": behaviour_manifest.pilot_version,
+                    "adjudication_version": behaviour_manifest.adjudication_version,
+                    "adjudication_digest": behaviour_manifest.adjudication_digest,
+                    "evidence_digest": behaviour_manifest.evidence_digest,
+                }
+                if behaviour_manifest is not None
+                else pilot_ground_truth
+            ),
+            "scope": (
+                "behaviour_pilot"
+                if args.behaviour_pilot
+                else "canary"
+                if args.canary
+                else "pilot"
+                if args.pilot
+                else "full"
+            ),
             "model": config.settings.model,
             "aggregates": grouped_summaries(evaluation_records),
             "outcomes": [
@@ -925,7 +1002,15 @@ def main(argv: list[str] | None = None) -> int:
             ],
             "manual_semantic_review": "pending; template written outside version control",
         }
-        suffix = "_canary" if args.canary else "_pilot" if args.pilot else ""
+        suffix = (
+            "_behaviour_pilot"
+            if args.behaviour_pilot
+            else "_canary"
+            if args.canary
+            else "_pilot"
+            if args.pilot
+            else ""
+        )
         output = args.output.with_name(f"{args.output.stem}{suffix}{args.output.suffix}")
         write_json(output, result)
         write_json(

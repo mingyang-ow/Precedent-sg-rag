@@ -15,14 +15,16 @@ separate precedent relevance from ultimate factual application.
 The oracle, abstention, and prompt-sufficiency methodology is now repaired offline. The repaired
 `rag-v2` canary answered correctly on the same Ahmed Salim evidence. The ten retrieved packages in
 the frozen 12-case pilot were then manually adjudicated, blind to their model outputs. No API calls
-were made during adjudication. The current decision is:
+were made during adjudication. That pilot is preserved unchanged as an answer-generation
+diagnostic. A separate balanced behavioral pilot has now been frozen after deterministic blind
+sequential evidence review. It contains six answer-expected and six abstain-expected records,
+balanced 6/6 across facts-only and facts-plus-principle queries. The current decision is:
 
-> **PILOT GROUND TRUTH FROZEN — PILOT COMPOSITION REVIEW HOLD**
+> **BALANCED BEHAVIORAL PILOT FROZEN — PAID INFERENCE APPROVAL HOLD**
 
 All ten retrieved packages were judged answerable, so all 12 pilot records now expect an answer.
-The experiment is technically executable, but this frozen sample cannot measure abstention
-behavior. Paid inference remains unapproved pending a decision whether to run it as an answer-only
-generation diagnostic or separately revise pilot sampling.
+The separate behavioral sample measures both sides of the decision boundary. Paid inference
+remains unapproved, and no API calls were made while constructing either ground truth.
 
 ## Scope and model choice
 
@@ -101,6 +103,18 @@ borderline: `12e71dc2c2cb5a60f8075814` is useful mainly as a factual/sentencing 
 `02bba523326c5266cf09e44e` supplies the Ladd test and attenuation principle but not the
 committal-specific power. The other eight were sufficiently direct. The resulting full-pilot
 ground truth is 12 answer and zero abstain.
+
+The answer-only artifact is not overwritten or repurposed. The separate
+`experiments/samples/rag_behaviour_adjudication.json` audit freezes the deterministic seed, all 278
+candidate IDs in their pre-inspection hash order, all 52 retrieved candidates reviewed before the
+balanced quotas filled, and three separately reviewed oracle candidates. Every inspected package
+is recorded, including those not selected. The compact
+`experiments/samples/rag_behaviour_pilot.json` manifest freezes the selected 12 IDs, evidence and
+adjudication digests, unchanged `rag-v2` generation contract, estimate, and a distinct cache/run
+signature. Model outputs were not inspected during selection or adjudication.
+
+The behavioral pilot is intentionally 50% answer and 50% abstain. It is a decision-boundary
+diagnostic, not an estimate of natural production class prevalence.
 
 ## Prompt and output contract
 
@@ -182,14 +196,22 @@ cached input tokens, and $1.20 per million output tokens.
 | Run | Calls | Estimated input | Expected output | Configured output ceiling | Expected cost | Ceiling cost |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Small pilot | 12 | 28,695 | 2,160 | 7,200 | $0.0083 | $0.0144 |
+| Balanced behavioral pilot | 12 | 22,833 | 2,160 | 7,200 | $0.0072 | $0.0132 |
 | Full baseline | 352 | 777,428 | 63,360 | 211,200 | $0.2315 | $0.4089 |
 
-The 12-call pilot contains six records per query mode: an answer-expected oracle warm-success
+The original 12-call answer-only pilot contains six records per query mode: an answer-expected oracle warm-success
 record, target-present retrieved records at depths 1 and 5, a warm retrieval-failure at depth 5,
 and cold-start evidence at depths 1 and 5. Blind manual review found all five retrieved records per
 mode sufficient for a bounded precedent answer. Target presence still does not determine their
 expected action: six of the ten retrieved packages lack the labelled target but contain other
 useful supplied authority.
+
+The separate behavioral pilot contains one manually verified oracle answer, two retrieved answers,
+and three retrieved abstentions per query mode. Its retrieved top-k distribution is four at k=1,
+five at k=3, and one at k=5. Its frozen adjudication digest is
+`169c42fffba61f6047f956b08a885a2e7a4de78bd66259bb8690027f84399419`, selected-evidence
+digest is `9faf464cb462aa3a4b87a13942f7bea4f7c81cba6db99a97ea8a165aca5cebb5`, and cache/run
+signature is `4f924e4441f67d42a6a3ff07`.
 
 Automatic SDK retries are disabled (`max_retries=0`), so 352 logical calls mean 352 planned HTTP
 attempts. Cache resumption makes completed records free to reuse. The command exits non-zero when
@@ -208,9 +230,11 @@ Four limitations must not be mistaken for ground truth:
    irrelevant historical proposition. Manual sufficiency review is required for retrieved context.
 3. Exact-quote validation proves traceability, not that a claim is entailed by the quote. The manual
    semantic subset is part of the completion gate.
-4. The fixed pilot has no abstain-expected record after blind adjudication. It can test answer
+4. The preserved answer-only pilot has no abstain-expected record after blind adjudication. It can test answer
    generation, grounding, oracle-versus-retrieved behavior, and facts-only versus assisted queries,
-   but it cannot estimate abstention correctness or inappropriate-answer rate.
+   but it cannot estimate abstention correctness or inappropriate-answer rate. The separate
+   balanced behavioral pilot measures that decision boundary, but its engineered class balance must
+   not be interpreted as prevalence.
 
 The API does not expose a seed in this implementation, and temperature is omitted. Sample and
 evidence selection are deterministic; model wording is not guaranteed byte-for-byte repeatable.
@@ -227,8 +251,9 @@ uv run sg-legal-rag-evaluate
 The billed path requires the explicit `--execute` flag. It must not be used until a new request plan
 has been approved. `--canary` restricts that path to the manually verified Ahmed Salim
 `oracle_gold_context` package `0362866e90548d293669f8d3`; `--pilot` restricts it to the fixed
-12-record pilot. Before creating the API client, execution reconstructs and verifies both evidence
-and blind ground-truth digests. No inference is authorized by this adjudication.
+12-record answer-only pilot; and `--behaviour-pilot` restricts it to the separate frozen balanced
+pilot. Before creating the API client, execution reconstructs and verifies the global evidence,
+selected evidence, and blind ground-truth digests. No inference is authorized by this adjudication.
 
 ## Completion gate
 

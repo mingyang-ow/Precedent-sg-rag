@@ -312,6 +312,74 @@ def _percentile(values: list[float], proportion: float) -> float | None:
     return ordered[lower] * (1 - weight) + ordered[upper] * weight
 
 
+def behaviour_metrics(outcomes: list[EvaluationOutcome]) -> dict[str, object]:
+    """Score the answer/abstain decision boundary without folding in provider failures."""
+
+    known = [
+        outcome
+        for outcome in outcomes
+        if outcome.provider_succeeded
+        and outcome.expected_action is not ExpectedAction.UNKNOWN_NEEDS_REVIEW
+    ]
+    true_positive = sum(
+        outcome.expected_action is ExpectedAction.ANSWER and outcome.answered for outcome in known
+    )
+    false_negative = sum(
+        outcome.expected_action is ExpectedAction.ANSWER and outcome.abstained for outcome in known
+    )
+    false_positive = sum(
+        outcome.expected_action is ExpectedAction.ABSTAIN and outcome.answered for outcome in known
+    )
+    true_negative = sum(
+        outcome.expected_action is ExpectedAction.ABSTAIN and outcome.abstained for outcome in known
+    )
+    answer_total = true_positive + false_negative
+    abstain_total = true_negative + false_positive
+    answer_recall = true_positive / answer_total if answer_total else None
+    abstention_recall = true_negative / abstain_total if abstain_total else None
+    return {
+        "confusion_matrix": {
+            "true_positive_answer": true_positive,
+            "false_negative_abstention": false_negative,
+            "false_positive_answer": false_positive,
+            "true_negative_abstention": true_negative,
+        },
+        "evaluable_records": len(known),
+        "excluded_provider_api_failures": sum(
+            outcome.evaluation_status is EvaluationStatus.PROVIDER_API_FAILURE
+            for outcome in outcomes
+        ),
+        "excluded_structured_output_failures": sum(
+            outcome.evaluation_status is EvaluationStatus.STRUCTURED_OUTPUT_FAILURE
+            for outcome in outcomes
+        ),
+        "excluded_unknown_ground_truth": sum(
+            outcome.provider_succeeded
+            and outcome.expected_action is ExpectedAction.UNKNOWN_NEEDS_REVIEW
+            for outcome in outcomes
+        ),
+        "answer_recall": answer_recall,
+        "abstention_recall": abstention_recall,
+        "false_answer_rate": false_positive / abstain_total if abstain_total else None,
+        "false_abstention_rate": false_negative / answer_total if answer_total else None,
+        "balanced_accuracy": (
+            (answer_recall + abstention_recall) / 2
+            if answer_recall is not None and abstention_recall is not None
+            else None
+        ),
+        "unsupported_claim_rate": _mean(
+            outcome.validation.unsupported_claim_rate_proxy for outcome in known
+        ),
+        "citation_validity": _mean(
+            outcome.validation.structurally_valid for outcome in known if outcome.answered
+        ),
+        "citation_correctness": _mean(outcome.validation.citation_correctness for outcome in known),
+        "citation_completeness": _mean(
+            outcome.validation.citation_completeness for outcome in known
+        ),
+    }
+
+
 def summarize_records(records: list[GenerationRecord]) -> dict[str, object]:
     outcomes = [evaluate_record(record) for record in records]
     evaluable = [outcome for outcome in outcomes if outcome.provider_succeeded]
@@ -425,6 +493,7 @@ def summarize_records(records: list[GenerationRecord]) -> dict[str, object]:
             "total": sum(item.total_tokens for item in usage),
         },
         "estimated_cost_usd": sum(costs),
+        "behaviour": behaviour_metrics(outcomes),
     }
 
 

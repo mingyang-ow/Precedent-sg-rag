@@ -1,0 +1,112 @@
+{
+  "adjudication_digest": "169c42fffba61f6047f956b08a885a2e7a4de78bd66259bb8690027f84399419",
+  "adjudication_version": "behaviour-sufficiency-v1",
+  "answer_pilot_adjudication_digest": "1d603177732e892f150cdffead63e85242b2b865b8e8dcc22dd56182dbc4fd03",
+  "answer_pilot_adjudication_version": "pilot-sufficiency-v1",
+  "answer_pilot_evidence_digest": "8ee6e42f9c4faa12b30a01b70126cb9f406533791daacf2f8f03537295c60eed",
+  "counts": {
+    "conditions": {
+      "oracle_gold_context": 2,
+      "retrieved_context": 10
+    },
+    "expected_actions": {
+      "abstain": 6,
+      "answer": 6
+    },
+    "query_modes": {
+      "facts_only": 6,
+      "facts_principle": 6
+    },
+    "top_k": {
+      "1": 4,
+      "3": 5,
+      "5": 1,
+      "oracle": 2
+    }
+  },
+  "estimate": {
+    "expected_cost_usd_no_cache": 0.0071586,
+    "expected_output_tokens": 2160,
+    "input_tokens": 22833,
+    "input_tokens_per_request": {
+      "max": 3231,
+      "mean": 1902.75,
+      "min": 1271
+    },
+    "maximum_cost_usd_no_cache": 0.0132066,
+    "maximum_output_tokens": 7200,
+    "method": "local tokenizer estimate including instructions, JSON schema, prompt, and fixed request overhead; server accounting may differ",
+    "pricing_snapshot_date": "2026-08-26",
+    "pricing_usd_per_million": {
+      "cached_input": 0.02,
+      "input": 0.2,
+      "output": 1.2
+    },
+    "requests": 12,
+    "tokenizer": "tiktoken:model:gpt-5.6-luna"
+  },
+  "evidence_digest": "9faf464cb462aa3a4b87a13942f7bea4f7c81cba6db99a97ea8a165aca5cebb5",
+  "evidence_digest_algorithm": "sha256-canonical-json-v1",
+  "generation_contract": {
+    "automatic_retries": 0,
+    "max_output_tokens": 600,
+    "model": "gpt-5.6-luna",
+    "output_schema_signature": "61e54fb6213abad2a8975479641a6e5f9b19e44361c826061cbfbb856bb87eeb",
+    "prompt_signature": "29fa06887d945fd91959c89b6d9637d0cb732beb21ae4f5d2bd001aa9e3446be",
+    "prompt_version": "rag-v2",
+    "reasoning_effort": "none",
+    "seed": null,
+    "temperature": null,
+    "top_ks": [
+      1,
+      3,
+      5
+    ],
+    "verbosity": "low"
+  },
+  "global_evidence_digest": "39d7ce7a0e8a0164712b4dbf1b4fa042b49222c1b6f409f800d0e95805cd29fe",
+  "global_manifest_schema_version": 4,
+  "global_run_signature": "12498ed3148d7ae999e76150",
+  "metric_plan": {
+    "compute_after_inference": true,
+    "confusion_matrix": {
+      "abstain_expected_model_abstains": "true_negative_abstention",
+      "abstain_expected_model_answers": "false_positive_answer",
+      "answer_expected_model_abstains": "false_negative_abstention",
+      "answer_expected_model_answers": "true_positive_answer"
+    },
+    "failure_policy": "provider/API and structured-output failures are reported separately and excluded from model-behaviour confusion-matrix denominators",
+    "false_answer_priority": "an answer on manually adjudicated insufficient evidence is the priority behavioural failure",
+    "primary_metrics": [
+      "answer_recall",
+      "abstention_recall",
+      "false_answer_rate",
+      "false_abstention_rate",
+      "balanced_accuracy",
+      "unsupported_claim_rate",
+      "citation_validity",
+      "citation_correctness",
+      "citation_completeness"
+    ]
+  },
+  "pilot_version": "pilot-behaviour-v1",
+  "prevalence_warning": "The intentional 50/50 class balance is not an estimate of natural production answer or abstention prevalence.",
+  "purpose": "balanced behavioural diagnostic of the rag-v2 answer-versus-abstain decision boundary",
+  "run_signature": "4f924e4441f67d42a6a3ff07",
+  "schema_version": 1,
+  "seed": 20260827,
+  "selected_package_ids": [
+    "8c13b526e62500c845aa95b9",
+    "f1444dfde3b0f0851a1b483e",
+    "55b464702f081a3ff6d688fb",
+    "266a3190b2ba1df079c15645",
+    "0cde567db385c0ebc14ec1c9",
+    "615689094ac2690f02642f7d",
+    "7cfe4dcc0cc44a18b4f6a498",
+    "a35f9a4b139ba3a67608dcee",
+    "4a485ec6ed04a9358fa9b711",
+    "d79a3b3b0a0b1ee71b2f4e91",
+    "88f23f608864cf5f1372a038",
+    "404920c168c10748e0258895"
+  ]
+}
