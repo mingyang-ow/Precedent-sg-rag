@@ -31,17 +31,17 @@ from .schema import AnswerStatus
 from .semantic_judge import (
     JUDGE_PACKAGE_VERSION,
     JUDGE_PROMPT_VERSION,
+    JUDGE_PROVIDER_SCHEMA_VERSION,
     JUDGE_RUBRIC_VERSION,
-    JUDGE_SCHEMA_VERSION,
     JUDGE_SYSTEM_INSTRUCTIONS,
     GoogleGeminiSemanticJudge,
     JudgeCallStatus,
     JudgeProviderResult,
     JudgeVerdict,
-    SemanticJudgeDecision,
     SemanticJudgePackage,
     SemanticJudgeProvider,
     build_semantic_package,
+    provider_judge_schema,
     render_judge_input,
 )
 
@@ -93,7 +93,7 @@ class FrozenSemanticJudgePilot(BaseModel):
     package_payload_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     judge_prompt_version: Literal["semantic-judge-prompt-v1"]
     judge_prompt_signature: str = Field(pattern=r"^[0-9a-f]{64}$")
-    judge_schema_version: Literal["semantic-judge-schema-v1"]
+    judge_schema_version: Literal["semantic-judge-schema-v1", "semantic-judge-provider-schema-v2"]
     judge_schema_signature: str = Field(pattern=r"^[0-9a-f]{64}$")
     judge_rubric_version: Literal["semantic-grounding-rubric-v1"]
     judge_rubric_signature: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -112,14 +112,18 @@ class FrozenSemanticJudgePilot(BaseModel):
         payload = [package.model_dump(mode="json") for package in self.packages]
         if canonical_digest(payload) != self.package_payload_digest:
             raise ValueError("semantic judge package payload digest mismatch")
-        expected_contract = judge_contract(self.settings)
+        expected_contract = judge_contract(self.settings, schema_version=self.judge_schema_version)
         if (
             self.judge_prompt_signature != expected_contract["prompt_signature"]
             or self.judge_schema_signature != expected_contract["schema_signature"]
             or self.judge_rubric_signature != expected_contract["rubric_signature"]
         ):
             raise ValueError("semantic judge prompt, schema, or rubric changed")
-        if self.token_cost_estimate != estimate_tokens_and_cost(self.packages, self.settings):
+        if self.token_cost_estimate != estimate_tokens_and_cost(
+            self.packages,
+            self.settings,
+            schema_version=self.judge_schema_version,
+        ):
             raise ValueError("semantic judge token and cost estimate changed")
         if semantic_run_signature(self) != self.run_signature:
             raise ValueError("semantic judge run signature mismatch")
@@ -189,19 +193,21 @@ def load_judge_settings(path: Path) -> JudgeSettings:
     )
 
 
-def judge_contract(settings: JudgeSettings) -> dict[str, str]:
+def judge_contract(
+    settings: JudgeSettings, *, schema_version: str = JUDGE_PROVIDER_SCHEMA_VERSION
+) -> dict[str, str]:
     from .semantic_judge import SEMANTIC_RUBRIC
 
     return {
         "prompt_signature": canonical_digest(JUDGE_SYSTEM_INSTRUCTIONS),
-        "schema_signature": canonical_digest(SemanticJudgeDecision.model_json_schema()),
+        "schema_signature": canonical_digest(provider_judge_schema(schema_version)),
         "rubric_signature": canonical_digest(SEMANTIC_RUBRIC),
         "settings_signature": canonical_digest(settings.model_dump(mode="json")),
     }
 
 
 def semantic_run_signature(pilot: FrozenSemanticJudgePilot) -> str:
-    contract = judge_contract(pilot.settings)
+    contract = judge_contract(pilot.settings, schema_version=pilot.judge_schema_version)
     return canonical_digest(
         {
             "schema": 1,
@@ -228,9 +234,12 @@ def load_judge_reference(path: Path) -> SemanticJudgeReference:
 
 
 def estimate_tokens_and_cost(
-    packages: tuple[SemanticJudgePackage, ...], settings: JudgeSettings
+    packages: tuple[SemanticJudgePackage, ...],
+    settings: JudgeSettings,
+    *,
+    schema_version: str = JUDGE_PROVIDER_SCHEMA_VERSION,
 ) -> dict[str, Any]:
-    schema = json.dumps(SemanticJudgeDecision.model_json_schema(), sort_keys=True)
+    schema = json.dumps(provider_judge_schema(schema_version), sort_keys=True)
     per_request = [
         math.ceil(
             len((JUDGE_SYSTEM_INSTRUCTIONS + schema + render_judge_input(package)).encode("utf-8"))
@@ -326,7 +335,7 @@ def prepare_frozen_pilot(
         "package_payload_digest": payload_digest,
         "judge_prompt_version": JUDGE_PROMPT_VERSION,
         "judge_prompt_signature": contract["prompt_signature"],
-        "judge_schema_version": JUDGE_SCHEMA_VERSION,
+        "judge_schema_version": JUDGE_PROVIDER_SCHEMA_VERSION,
         "judge_schema_signature": contract["schema_signature"],
         "judge_rubric_version": JUDGE_RUBRIC_VERSION,
         "judge_rubric_signature": contract["rubric_signature"],
@@ -352,6 +361,12 @@ def validate_reference_against_pilot(
     if reference.source_pilot_digest != canonical_digest(reference_target.model_dump(mode="json")):
         raise ValueError("semantic judge reference pilot digest changed")
     if reference_pilot is not None:
+        allowed_schema_versions = {
+            reference_pilot.judge_schema_version,
+            JUDGE_PROVIDER_SCHEMA_VERSION,
+        }
+        if pilot.judge_schema_version not in allowed_schema_versions:
+            raise ValueError("semantic judge retry changed to an unsupported provider schema")
         source = reference_pilot.model_dump(mode="json", exclude={"run_signature"})
         retry = pilot.model_dump(mode="json", exclude={"run_signature"})
         for field in ("max_output_tokens", "model", "timeout_seconds"):
@@ -359,6 +374,10 @@ def validate_reference_against_pilot(
             retry["settings"].pop(field)
         source.pop("token_cost_estimate")
         retry.pop("token_cost_estimate")
+        source.pop("judge_schema_version")
+        retry.pop("judge_schema_version")
+        source.pop("judge_schema_signature")
+        retry.pop("judge_schema_signature")
         if source != retry:
             raise ValueError("semantic judge retry changed frozen protocol or settings")
     if tuple(record.package_id for record in reference.records) != pilot.selected_package_ids:
@@ -667,6 +686,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.preflight:
             print(json.dumps({"verified": True, "calls": 0, "run_signature": pilot.run_signature}))
             return 0
+        if pilot.judge_schema_version != JUDGE_PROVIDER_SCHEMA_VERSION:
+            raise ValueError("historical model-owned judge schema cannot be executed")
         if args.confirm_run_signature != pilot.run_signature:
             raise ValueError("--confirm-run-signature must match the frozen live run")
         if not args.confirm_free_tier:

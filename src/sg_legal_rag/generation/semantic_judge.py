@@ -17,6 +17,7 @@ from .schema import AnswerStatus, GroundedAnswer
 JUDGE_PACKAGE_VERSION = "semantic-judge-package-v1"
 JUDGE_PROMPT_VERSION = "semantic-judge-prompt-v1"
 JUDGE_SCHEMA_VERSION = "semantic-judge-schema-v1"
+JUDGE_PROVIDER_SCHEMA_VERSION = "semantic-judge-provider-schema-v2"
 JUDGE_RUBRIC_VERSION = "semantic-grounding-rubric-v1"
 
 SEMANTIC_RUBRIC = """A claim is supported when the cited supplied evidence reasonably supports
@@ -107,6 +108,16 @@ class SemanticJudgeDecision(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
 
     schema_version: Literal["semantic-judge-schema-v1"]
+    verdict: JudgeVerdict
+    claims: tuple[JudgeClaimDecision, ...] = Field(min_length=1, max_length=4)
+    summary_reason: str = Field(min_length=1, max_length=500)
+
+
+class SemanticJudgeOutput(BaseModel):
+    """Model-generated semantic fields; protocol metadata is attached by the application."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
+
     verdict: JudgeVerdict
     claims: tuple[JudgeClaimDecision, ...] = Field(min_length=1, max_length=4)
     summary_reason: str = Field(min_length=1, max_length=500)
@@ -233,6 +244,26 @@ def parse_judge_decision(raw_output: str, package: SemanticJudgePackage) -> Sema
     return decision
 
 
+def parse_provider_judge_output(
+    raw_output: str, package: SemanticJudgePackage
+) -> SemanticJudgeDecision:
+    output = SemanticJudgeOutput.model_validate_json(raw_output)
+    decision = SemanticJudgeDecision(
+        schema_version=JUDGE_SCHEMA_VERSION,
+        **output.model_dump(mode="python"),
+    )
+    validate_decision_for_package(decision, package)
+    return decision
+
+
+def provider_judge_schema(version: str) -> dict[str, Any]:
+    if version == JUDGE_SCHEMA_VERSION:
+        return SemanticJudgeDecision.model_json_schema()
+    if version == JUDGE_PROVIDER_SCHEMA_VERSION:
+        return SemanticJudgeOutput.model_json_schema()
+    raise ValueError(f"unsupported semantic judge provider schema: {version}")
+
+
 def _bounded_provider_text(value: Any, *, max_length: int) -> str | None:
     if not isinstance(value, str):
         return None
@@ -353,7 +384,7 @@ class GoogleGeminiSemanticJudge:
                     "response_format": {
                         "type": "text",
                         "mime_type": "application/json",
-                        "schema": SemanticJudgeDecision.model_json_schema(),
+                        "schema": provider_judge_schema(JUDGE_PROVIDER_SCHEMA_VERSION),
                     },
                     "generation_config": {
                         "thinking_level": settings.thinking_level,
@@ -407,7 +438,7 @@ class GoogleGeminiSemanticJudge:
             )
 
         try:
-            decision = parse_judge_decision(raw_output, package)
+            decision = parse_provider_judge_output(raw_output, package)
         except Exception as error:  # noqa: BLE001 - strict parse errors are a distinct outcome.
             return JudgeProviderResult(
                 status=JudgeCallStatus.MALFORMED_OUTPUT,
