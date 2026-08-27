@@ -169,6 +169,8 @@ def test_selected_package_order_reproduces_from_frozen_policy() -> None:
 
 def test_oracle_evidence_is_manually_reviewed_not_mechanically_assumed() -> None:
     adjudication = load_behaviour_adjudication(ADJUDICATION_PATH)
+    manifest = load_manifest()
+    answer_adjudication = load_pilot_adjudication(ANSWER_ADJUDICATION_PATH)
     oracle_by_id = {record.package_id: record for record in adjudication.oracle_reviews}
 
     unrelated = oracle_by_id["19b054ad8c323f6da689f55c"]
@@ -179,6 +181,26 @@ def test_oracle_evidence_is_manually_reviewed_not_mechanically_assumed() -> None
     assert not unrelated.selected_for_pilot
     assert fallback.evidence_sufficient and fallback.selected_for_pilot
     assert assisted.evidence_sufficient and assisted.selected_for_pilot
+
+    modes_by_query = {
+        record["query_id"]: record["mode"] for record in manifest["selection"]["records"]
+    }
+    fallback_pool = tuple(
+        lock["package_id"]
+        for lock in manifest["evidence_freeze"]["packages"]
+        if lock["condition"] == "oracle_gold_context"
+        and modes_by_query[lock["query_id"]] == "facts_only"
+        and lock["package_id"] not in answer_adjudication.pilot_package_ids
+        and lock["package_id"] not in adjudication.oracle_initial_package_ids
+    )
+    frozen_fallback_order = deterministic_order(
+        fallback_pool,
+        seed=adjudication.seed,
+        tag="oracle-fallback",
+        mode="facts_only",
+        separator="\\0",
+    )
+    assert frozen_fallback_order[0] == fallback.package_id
 
 
 def test_behaviour_digests_and_run_signature_are_deterministic_and_frozen() -> None:

@@ -39,8 +39,13 @@ def deterministic_order(
     seed: int,
     tag: str,
     mode: str | None = None,
+    separator: str = "\0",
 ) -> tuple[str, ...]:
-    prefix = f"{seed}\0{tag}\0" if mode is None else f"{seed}\0{tag}\0{mode}\0"
+    prefix = (
+        f"{seed}{separator}{tag}{separator}"
+        if mode is None
+        else f"{seed}{separator}{tag}{separator}{mode}{separator}"
+    )
     return tuple(
         sorted(
             package_ids,
@@ -323,6 +328,9 @@ def validate_behaviour_pilot(
         seed=adjudication.seed,
         tag=ORACLE_FALLBACK_ORDER_TAG,
         mode="facts_only",
+        # The frozen shell command used the visible two-character ``\0`` delimiter.
+        # Preserve those exact bytes; retrieved ordering above uses actual NUL bytes.
+        separator="\\0",
     )
     if (
         tuple(record.package_id for record in facts_only_fallback_reviews)
