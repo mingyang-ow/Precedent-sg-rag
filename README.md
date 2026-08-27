@@ -60,6 +60,9 @@ uv run sg-legal-rag-evaluate
 uv run sg-legal-rag-evaluate --preflight-only --behaviour-pilot
 # Slow end-to-end retrieval reconstruction audit; also makes no provider calls.
 uv run sg-legal-rag-evaluate --reconstruct-and-verify --behaviour-pilot
+# Sanitized blind-review export and cached-output-only clean-room evaluation.
+uv run sg-legal-rag-cleanroom --export-review
+uv run sg-legal-rag-cleanroom --evaluate
 uv run pytest
 ```
 

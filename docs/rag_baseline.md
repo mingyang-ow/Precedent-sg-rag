@@ -215,6 +215,37 @@ five at k=3, and one at k=5. Its frozen adjudication digest is
 digest is `9faf464cb462aa3a4b87a13942f7bea4f7c81cba6db99a97ea8a165aca5cebb5`, and cache/run
 signature is `3664b44b7d4dbe620225d598`.
 
+That 6/6 adjudication is retained as the original historical evaluation layer. A later methodology
+audit found that its reviewer had access to citation-verification and retrieval diagnostics that
+were not visible to the model. A context-isolated reviewer therefore re-adjudicated the same 12
+unchanged inputs using only the exact query, ordered prompt evidence, visible case/source fields,
+and `rag-v2` answerability rule. The parent agent recused itself because it had already seen prior
+results and rationales.
+
+The new `behaviour-cleanroom-v1` layer is frozen in
+`experiments/samples/rag_behaviour_cleanroom_adjudication.json`, digest
+`f3915f8202a56f687cc85655290532d36da6603c7c636e57b8500a90845eb6db`. It labels nine records
+answer and three abstain, with no forced borderline or cannot-determine labels. Five labels differ
+from the original evaluation: four hidden-metadata abstentions become answers based on useful
+visible propositions, while one oracle answer becomes an abstention because its visible passage
+does not develop a useful rule for the query.
+
+Against the preserved outputs, the clean-room confusion matrix is TP 7, TN 2, FP 1, FN 2. Answer
+recall is 0.778, abstention recall is 0.667, balanced accuracy is 0.722, false-answer rate is 0.333,
+and false-abstention rate is 0.222. Oracle records are 2/2; retrieved records have 0.75 answer
+recall, 0.50 abstention recall, and 0.625 balanced accuracy. Facts-only balanced accuracy is 0.667;
+facts-plus-principle has 0.833 answer recall but no abstain-labelled denominator.
+
+All 12 provider/schema calls succeeded. Eight outputs answered. Under the unchanged strict
+verbatim-quote evaluator, three of eight answered records are fully citation-valid, mean citation
+correctness is 0.4375, citation completeness is 1.0, unsupported-claim rate is 0.5625, and no
+output cites an unsupplied authority. Four of fourteen claims have a deterministic mojibake
+equivalence; counting that evaluator-only equivalence would raise valid claims from 7 to 11 and
+fully valid answered records from 3 to 5. It is reported separately rather than replacing the
+primary metric because `rag-v2` explicitly requires verbatim quotes. Changing model-visible text
+or exposing citation-verification metadata would require a new evidence digest, run signature, and
+pilot and is not applied retroactively.
+
 Automatic SDK retries are disabled (`max_retries=0`), so 352 logical calls mean 352 planned HTTP
 attempts. Cache resumption makes completed records free to reuse. The command exits non-zero when
 all provider attempts in an invocation fail. The explicit `--retry-errors` option can add at most
@@ -268,6 +299,13 @@ the provider:
 
 ```bash
 uv run sg-legal-rag-evaluate --reconstruct-and-verify --behaviour-pilot
+```
+
+The clean-room review export and cached-output-only recomputation are separate no-provider paths:
+
+```bash
+uv run sg-legal-rag-cleanroom --export-review
+uv run sg-legal-rag-cleanroom --evaluate
 ```
 
 ## Completion gate

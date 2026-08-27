@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "adjudication_version": "behaviour-cleanroom-v1",
+  "source_run_signature": "3664b44b7d4dbe620225d598",
+  "source_evidence_digest": "9faf464cb462aa3a4b87a13942f7bea4f7c81cba6db99a97ea8a165aca5cebb5",
+  "review_artifact_digest": "36eb00aea5dc2fa2c3dd2be263c4c3d310200514bd6562766e24fdfaf8c21006",
+  "blinded_to_model_outputs": true,
+  "hidden_fields": [
+    "model_response",
+    "model_status",
+    "previous_expected_action",
+    "previous_evidence_sufficient",
+    "previous_review_rationale",
+    "citation_relationship_verified",
+    "target_present",
+    "retrieval_diagnostics",
+    "gold_target_metadata",
+    "provider_result",
+    "evaluation_score",
+    "previous_pilot_classification"
+  ],
+  "reviewer": "context-isolated-subagent",
+  "review_date": "2026-08-27",
+  "records": [
+    {
+      "record_number": 1,
+      "package_id": "8c13b526e62500c845aa95b9",
+      "label": "abstain",
+      "rationale": "The passage gives procedural history involving a different condemned prisoner and briefly notes that wilful blindness was irrelevant because his conviction rested on actual knowledge, but it supplies no holding or sufficiently developed rule that supports a defensible recommendation for the queried last-minute situation.",
+      "supporting_evidence_ids": []
+    },
+    {
+      "record_number": 2,
+      "package_id": "f1444dfde3b0f0851a1b483e",
+      "label": "answer",
+      "rationale": "E1 states that the child's financial needs and the liable parent's ability to meet them are likely the most significant maintenance considerations, and it treats the parties' relative incomes as important. This supports a relevant child-maintenance authority, although it does not resolve the extension-of-time or retroactivity issues.",
+      "supporting_evidence_ids": [
+        "E1"
+      ]
+    },
+    {
+      "record_number": 3,
+      "package_id": "55b464702f081a3ff6d688fb",
+      "label": "answer",
+      "rationale": "E1 concerns a capital drug-trafficking conviction followed by a dismissed appeal and rejected clemency petition, and it sets out the statutory circumstances in which life imprisonment may replace death, including the restricted-involvement requirement. It is relevant authority, while the passage does not establish that the client's facts meet that requirement.",
+      "supporting_evidence_ids": [
+        "E1"
+      ]
+    },
+    {
+      "record_number": 4,
+      "package_id": "266a3190b2ba1df079c15645",
+      "label": "answer",
+      "rationale": "E1 states the Said v Butt principle exempting directors from personal liability for their company's contractual breaches when they act as directors and do not breach personal duties. That rule is directly relevant to the attempt to impose personal liability, though its application to the client's director remains unresolved.",
+      "supporting_evidence_ids": [
+        "E1"
+      ]
+    },
+    {
+      "record_number": 5,
+      "package_id": "0cde567db385c0ebc14ec1c9",
+      "label": "abstain",
+      "rationale": "The passages address forum convenience, foreign-witness compellability, foreign insolvency recognition, criminal investigations, and examination of judgment debtors. None supports the asserted statutory power to appoint a private examiner to obtain evidence for foreign proceedings.",
+      "supporting_evidence_ids": []
+    },
+    {
+      "record_number": 6,
+      "package_id": "615689094ac2690f02642f7d",
+      "label": "abstain",
+      "rationale": "The evidence concerns advice about the effect of a deed amid a solicitor's conflict, mental-capacity jurisdiction, and witness credibility. It does not establish a solicitor's duty or liability to an intended gift beneficiary for delay, capacity advice, or failure to execute a gift before the donor's death.",
+      "supporting_evidence_ids": []
+    },
+    {
+      "record_number": 7,
+      "package_id": "7cfe4dcc0cc44a18b4f6a498",
+      "label": "answer",
+      "rationale": "E1 directly states that plaintiffs bear the burden of establishing misrepresentation, must prove every element of the tort, and must adduce proof that the defendants made false representations of fact. It supplies the precise relevant rule, without establishing that the client's evidence satisfies it.",
+      "supporting_evidence_ids": [
+        "E1"
+      ]
+    },
+    {
+      "record_number": 8,
+      "package_id": "a35f9a4b139ba3a67608dcee",
+      "label": "answer",
+      "rationale": "E2 provides an imprisonment comparator grounded in premeditation, culpability, deterrence, and retribution, while E3 identifies seriousness of injury, culpability, dangerous means, potential harm, weapons, and brutality as sentencing factors. These are relevant sentencing authorities, although neither passage resolves the sentence for the client's attempted-murder facts or states the separate public-disquiet proposition.",
+      "supporting_evidence_ids": [
+        "E2",
+        "E3"
+      ]
+    },
+    {
+      "record_number": 9,
+      "package_id": "4a485ec6ed04a9358fa9b711",
+      "label": "answer",
+      "rationale": "E1 states the forum non conveniens burden and the natural-forum inquiry, including convenience and witness availability. E3 supplies a counterclaim-specific procedural-convenience test and confirms that the relationship between claim and counterclaim is relevant to whether they should proceed together. The evidence supports relevant procedural authority, while application to the present overlap remains open.",
+      "supporting_evidence_ids": [
+        "E1",
+        "E3"
+      ]
+    },
+    {
+      "record_number": 10,
+      "package_id": "d79a3b3b0a0b1ee71b2f4e91",
+      "label": "answer",
+      "rationale": "E1 expressly recognizes inherent jurisdiction to correct or clarify orders and a broad power to make incidental or consequential orders needed to give effect to relief, while limiting that power against substantive correction or variation of perfected orders. This directly supports the procedural principle, but not whether the proposed oppression relief stays within that boundary.",
+      "supporting_evidence_ids": [
+        "E1"
+      ]
+    },
+    {
+      "record_number": 11,
+      "package_id": "88f23f608864cf5f1372a038",
+      "label": "answer",
+      "rationale": "E1 identifies an authority addressing articles that validate majority-signed written directors' resolutions, including whether notice to the minority and good faith are required. E3 reproduces a materially matching article and discusses the absence of formal resolutions. These passages support relevant authority on the stated written-resolution principle, though they do not decide the propriety of the dilutive placement.",
+      "supporting_evidence_ids": [
+        "E1",
+        "E3"
+      ]
+    },
+    {
+      "record_number": 12,
+      "package_id": "404920c168c10748e0258895",
+      "label": "answer",
+      "rationale": "E1 identifies a case addressing articles under which a written resolution signed by a majority of directors is valid, and specifically flags good faith and notice to the minority as issues. It is relevant authority for the stated resolution principle, although the passage does not establish whether the dilutive share placement was valid.",
+      "supporting_evidence_ids": [
+        "E1"
+      ]
+    }
+  ],
+  "digest_algorithm": "sha256-canonical-json-v1",
+  "digest": "f3915f8202a56f687cc85655290532d36da6603c7c636e57b8500a90845eb6db"
+}
