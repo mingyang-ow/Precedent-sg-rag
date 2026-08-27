@@ -373,10 +373,18 @@ def evaluate_judge_results(
     claim_pairs: list[tuple[JudgeVerdict, JudgeVerdict]] = []
     disagreements: list[dict[str, Any]] = []
     unavailable: list[str] = []
+    malformed: list[str] = []
+    not_attempted: list[str] = []
     for reference_record in reference.records:
         execution = by_id.get(reference_record.package_id)
-        if execution is None or execution.result.status is JudgeCallStatus.JUDGE_UNAVAILABLE:
+        if execution is None:
+            not_attempted.append(reference_record.package_id)
+            continue
+        if execution.result.status is JudgeCallStatus.JUDGE_UNAVAILABLE:
             unavailable.append(reference_record.package_id)
+            continue
+        if execution.result.status is JudgeCallStatus.MALFORMED_OUTPUT:
+            malformed.append(reference_record.package_id)
             continue
         decision = execution.result.decision
         assert decision is not None
@@ -439,6 +447,8 @@ def evaluate_judge_results(
         "record_level": metrics(record_pairs),
         "claim_level": metrics(claim_pairs),
         "judge_unavailable": unavailable,
+        "malformed_output": malformed,
+        "not_attempted": not_attempted,
         "disagreements": disagreements,
     }
 
@@ -467,6 +477,8 @@ def execute_frozen_pilot(
 ) -> dict[str, Any]:
     validate_reference_against_pilot(reference, pilot)
     results: list[JudgeExecutionRecord] = []
+    provider_calls = 0
+    stopped_package_id: str | None = None
     for package in pilot.packages:
         path = result_cache_path(cache_dir, pilot.run_signature, package.source_package_id)
         if path.exists():
@@ -474,6 +486,7 @@ def execute_frozen_pilot(
             _validate_execution_record(record, pilot, package)
         else:
             result = provider.judge(package, pilot.settings)
+            provider_calls += 1
             record = JudgeExecutionRecord(
                 run_signature=pilot.run_signature,
                 package_id=package.source_package_id,
@@ -482,20 +495,41 @@ def execute_frozen_pilot(
             )
             write_json(path, record.model_dump(mode="json"))
         results.append(record)
+        if record.result.status is JudgeCallStatus.JUDGE_UNAVAILABLE:
+            stopped_package_id = package.source_package_id
+            break
     successful = [
         record.result for record in results if record.result.status is JudgeCallStatus.SUCCEEDED
     ]
+    malformed = [
+        record.result
+        for record in results
+        if record.result.status is JudgeCallStatus.MALFORMED_OUTPUT
+    ]
     usage = [result.usage for result in successful if result.usage is not None]
+    run_status = (
+        "stopped_judge_unavailable"
+        if stopped_package_id is not None
+        else "completed_with_malformed_outputs"
+        if malformed
+        else "completed"
+    )
     return {
         "schema_version": 1,
+        "run_status": run_status,
+        "stopped_package_id": stopped_package_id,
         "run_signature": pilot.run_signature,
         "provider": pilot.settings.provider,
         "model": pilot.settings.model,
-        "requests": len(results),
+        "requests": provider_calls,
+        "records_processed": len(results),
         "automatic_retries": pilot.settings.automatic_retries,
+        "automatic_fallback": pilot.settings.automatic_fallback,
         "operational_summary": {
             "successes": len(successful),
             "failures": len(results) - len(successful),
+            "judge_unavailable": int(stopped_package_id is not None),
+            "malformed_outputs": len(malformed),
             "duration_seconds": sum(record.result.latency_ms for record in results) / 1000,
             "verdicts": dict(
                 sorted(
@@ -582,7 +616,7 @@ def main(argv: list[str] | None = None) -> int:
             cache_dir=args.cache_dir,
         )
         write_json(args.output, result)
-        return 0
+        return 0 if result["run_status"] == "completed" else 1
     except Exception as error:  # noqa: BLE001 - CLI reports bounded preflight/provider failures.
         print(f"semantic judge failed: {type(error).__name__}: {error}", file=sys.stderr)
         return 1

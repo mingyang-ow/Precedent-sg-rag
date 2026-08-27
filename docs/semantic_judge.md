@@ -85,7 +85,11 @@ The output has one record verdict and an ordered verdict for every generated cla
 one or more visible evidence IDs, and a short reason; the record includes a bounded summary reason.
 Extra fields, missing/reordered claims, arbitrary evidence IDs, malformed JSON, and explanations
 beyond the schema bounds are rejected. Provider failure or malformed output is
-`judge_unavailable`, never `unsupported`.
+never `unsupported`. Transport, HTTP, or non-completed provider interactions are
+`judge_unavailable`; the failed record is persisted and the run stops before the next call.
+Syntactically or structurally malformed decisions are `malformed_output`, remain distinct from
+availability, and do not trigger fallback or fail-fast. Supported, unsupported, uncertain, and
+reference disagreements are normal semantic outcomes and continue through the frozen record order.
 
 The rubric treats harmless paraphrase, non-verbatim wording, and explicit factual limitations as
 acceptable. It marks a claim unsupported when it materially exceeds, contradicts, or misattributes
@@ -146,6 +150,11 @@ failures, so a restart does not silently retry calls. Judge observability stays 
 result artifact—request counts, failures, durations, verdicts, tokens, and cost—rather than adding
 Prometheus surface to the production service. No query, evidence, or rationale becomes a metric
 label.
+
+The result artifact reports `completed`, `completed_with_malformed_outputs`, or
+`stopped_judge_unavailable`. A cached `judge_unavailable` record also stops a resumed run without a
+new provider call; earlier cached successes are not reissued. Records after the stop point are
+reported as `not_attempted`, not mislabeled as unavailable.
 
 ## Future shadow mode and residual risk
 

@@ -123,6 +123,7 @@ class JudgeTokenUsage(BaseModel):
 class JudgeCallStatus(StrEnum):
     SUCCEEDED = "succeeded"
     JUDGE_UNAVAILABLE = "judge_unavailable"
+    MALFORMED_OUTPUT = "malformed_output"
 
 
 class JudgeProviderResult(BaseModel):
@@ -145,7 +146,7 @@ class JudgeProviderResult(BaseModel):
             if self.decision is None or self.error is not None:
                 raise ValueError("successful judge result requires only a decision")
         elif self.decision is not None or self.error is None:
-            raise ValueError("unavailable judge result requires only an error")
+            raise ValueError("failed judge result requires only an error")
         return self
 
 
@@ -275,35 +276,7 @@ class GoogleGeminiSemanticJudge:
                 for content in step.get("content", [])
                 if content.get("type") == "text"
             )
-            decision = parse_judge_decision(raw_output, package)
-            usage_raw = body.get("usage")
-            usage = None
-            if usage_raw is not None:
-                usage = JudgeTokenUsage(
-                    input_tokens=int(usage_raw.get("total_input_tokens", 0)),
-                    output_tokens=int(usage_raw.get("total_output_tokens", 0)),
-                    thought_tokens=int(usage_raw.get("total_thought_tokens", 0)),
-                    total_tokens=int(usage_raw.get("total_tokens", 0)),
-                )
-            cost = None
-            if usage is not None:
-                cost = (
-                    usage.input_tokens * settings.input_usd_per_million
-                    + (usage.output_tokens + usage.thought_tokens) * settings.output_usd_per_million
-                ) / 1_000_000
-            return JudgeProviderResult(
-                status=JudgeCallStatus.SUCCEEDED,
-                requested_model=settings.model,
-                returned_model=body.get("model"),
-                response_id=body.get("id"),
-                generated_at=datetime.now(UTC).isoformat(),
-                latency_ms=(time.perf_counter() - started) * 1000,
-                usage=usage,
-                estimated_cost_usd=cost,
-                decision=decision,
-                error=None,
-            )
-        except Exception as error:  # noqa: BLE001 - all external failures stay operational.
+        except Exception as error:  # noqa: BLE001 - transport/provider failures are unavailable.
             return JudgeProviderResult(
                 status=JudgeCallStatus.JUDGE_UNAVAILABLE,
                 requested_model=settings.model,
@@ -316,3 +289,50 @@ class GoogleGeminiSemanticJudge:
                 decision=None,
                 error=f"{type(error).__name__}: {error}",
             )
+
+        try:
+            decision = parse_judge_decision(raw_output, package)
+        except Exception as error:  # noqa: BLE001 - strict parse errors are a distinct outcome.
+            return JudgeProviderResult(
+                status=JudgeCallStatus.MALFORMED_OUTPUT,
+                requested_model=settings.model,
+                returned_model=body.get("model"),
+                response_id=body.get("id"),
+                generated_at=datetime.now(UTC).isoformat(),
+                latency_ms=(time.perf_counter() - started) * 1000,
+                usage=None,
+                estimated_cost_usd=None,
+                decision=None,
+                error=f"{type(error).__name__}: {error}",
+            )
+
+        usage_raw = body.get("usage")
+        usage = None
+        if usage_raw is not None:
+            try:
+                usage = JudgeTokenUsage(
+                    input_tokens=int(usage_raw.get("total_input_tokens", 0)),
+                    output_tokens=int(usage_raw.get("total_output_tokens", 0)),
+                    thought_tokens=int(usage_raw.get("total_thought_tokens", 0)),
+                    total_tokens=int(usage_raw.get("total_tokens", 0)),
+                )
+            except (AttributeError, TypeError, ValueError):
+                usage = None
+        cost = None
+        if usage is not None:
+            cost = (
+                usage.input_tokens * settings.input_usd_per_million
+                + (usage.output_tokens + usage.thought_tokens) * settings.output_usd_per_million
+            ) / 1_000_000
+        return JudgeProviderResult(
+            status=JudgeCallStatus.SUCCEEDED,
+            requested_model=settings.model,
+            returned_model=body.get("model"),
+            response_id=body.get("id"),
+            generated_at=datetime.now(UTC).isoformat(),
+            latency_ms=(time.perf_counter() - started) * 1000,
+            usage=usage,
+            estimated_cost_usd=cost,
+            decision=decision,
+            error=None,
+        )

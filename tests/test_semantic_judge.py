@@ -81,13 +81,24 @@ def supported_decision(package: SemanticJudgePackage) -> SemanticJudgeDecision:
 
 
 class FakeProvider:
-    def __init__(self, *, unavailable: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        unavailable: bool = False,
+        unavailable_at: int | None = None,
+        malformed_at: int | None = None,
+        verdicts: tuple[JudgeVerdict, ...] = (),
+    ) -> None:
         self.calls = 0
-        self.unavailable = unavailable
+        self.unavailable_at = 1 if unavailable else unavailable_at
+        self.malformed_at = malformed_at
+        self.verdicts = verdicts
+        self.models: list[str] = []
 
     def judge(self, package, settings):
         self.calls += 1
-        if self.unavailable:
+        self.models.append(settings.model)
+        if self.calls == self.unavailable_at:
             return JudgeProviderResult(
                 status=JudgeCallStatus.JUDGE_UNAVAILABLE,
                 requested_model=settings.model,
@@ -100,6 +111,24 @@ class FakeProvider:
                 decision=None,
                 error="TimeoutError: timed out",
             )
+        if self.calls == self.malformed_at:
+            return JudgeProviderResult(
+                status=JudgeCallStatus.MALFORMED_OUTPUT,
+                requested_model=settings.model,
+                returned_model=settings.model,
+                response_id="fake-malformed",
+                generated_at="2026-08-27T00:00:00+00:00",
+                latency_ms=1,
+                usage=None,
+                estimated_cost_usd=0,
+                decision=None,
+                error="ValidationError: malformed structured decision",
+            )
+        decision = supported_decision(package)
+        if self.verdicts:
+            decision = decision.model_copy(
+                update={"verdict": self.verdicts[(self.calls - 1) % len(self.verdicts)]}
+            )
         return JudgeProviderResult(
             status=JudgeCallStatus.SUCCEEDED,
             requested_model=settings.model,
@@ -109,7 +138,7 @@ class FakeProvider:
             latency_ms=1,
             usage=None,
             estimated_cost_usd=0,
-            decision=supported_decision(package),
+            decision=decision,
             error=None,
         )
 
@@ -299,6 +328,39 @@ def test_google_adapter_is_stateless_structured_and_one_shot() -> None:
     assert result.estimated_cost_usd == 0
 
 
+def test_google_adapter_classifies_malformed_decision_separately() -> None:
+    package = frozen_pilot().packages[0]
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "id": "interaction-malformed",
+                "model": "gemini-3.7-flash",
+                "status": "completed",
+                "steps": [
+                    {
+                        "type": "model_output",
+                        "content": [{"type": "text", "text": "not json"}],
+                    }
+                ],
+            }
+
+    class Client:
+        def post(self, *args, **kwargs):
+            return Response()
+
+    result = GoogleGeminiSemanticJudge(api_key="judge-secret", client=Client()).judge(
+        package, frozen_pilot().settings
+    )
+
+    assert result.status is JudgeCallStatus.MALFORMED_OUTPUT
+    assert result.decision is None
+    assert result.error is not None and "ValidationError" in result.error
+
+
 def test_unavailable_provider_is_operational_failure_not_unsupported(tmp_path: Path) -> None:
     provider = FakeProvider(unavailable=True)
 
@@ -306,13 +368,37 @@ def test_unavailable_provider_is_operational_failure_not_unsupported(tmp_path: P
         pilot=frozen_pilot(), reference=reference(), provider=provider, cache_dir=tmp_path
     )
 
-    assert len(result["metrics"]["judge_unavailable"]) == 8
+    assert provider.calls == 1
+    assert result["run_status"] == "stopped_judge_unavailable"
+    assert result["stopped_package_id"] == frozen_pilot().selected_package_ids[0]
+    assert result["requests"] == 1
+    assert result["records_processed"] == 1
+    assert result["metrics"]["judge_unavailable"] == [frozen_pilot().selected_package_ids[0]]
+    assert result["metrics"]["not_attempted"] == list(frozen_pilot().selected_package_ids[1:])
     assert result["metrics"]["record_level"]["raw_counts"]["evaluated"] == 0
     assert result["metrics"]["record_level"]["raw_counts"]["judge"] == {}
 
 
-def test_cached_results_are_not_retried(tmp_path: Path) -> None:
-    unavailable = FakeProvider(unavailable=True)
+@pytest.mark.parametrize("failure_position", [1, 3, 8])
+def test_unavailable_stops_at_exact_failure_position(tmp_path: Path, failure_position: int) -> None:
+    provider = FakeProvider(unavailable_at=failure_position)
+
+    result = execute_frozen_pilot(
+        pilot=frozen_pilot(), reference=reference(), provider=provider, cache_dir=tmp_path
+    )
+
+    assert provider.calls == failure_position
+    assert result["requests"] == failure_position
+    assert result["records_processed"] == failure_position
+    assert len(result["results"]) == failure_position
+    assert result["stopped_package_id"] == frozen_pilot().selected_package_ids[failure_position - 1]
+    assert set(provider.models) == {frozen_pilot().settings.model}
+    assert frozen_pilot().settings.fallback_model not in provider.models
+    assert result["automatic_fallback"] is False
+
+
+def test_cached_successes_and_unavailable_record_are_not_reissued(tmp_path: Path) -> None:
+    unavailable = FakeProvider(unavailable_at=3)
     execute_frozen_pilot(
         pilot=frozen_pilot(), reference=reference(), provider=unavailable, cache_dir=tmp_path
     )
@@ -322,8 +408,49 @@ def test_cached_results_are_not_retried(tmp_path: Path) -> None:
         pilot=frozen_pilot(), reference=reference(), provider=second, cache_dir=tmp_path
     )
 
-    assert unavailable.calls == 8
+    assert unavailable.calls == 3
     assert second.calls == 0
+
+
+def test_all_semantic_verdicts_continue_through_frozen_records(tmp_path: Path) -> None:
+    provider = FakeProvider(
+        verdicts=(
+            JudgeVerdict.SUPPORTED,
+            JudgeVerdict.UNSUPPORTED,
+            JudgeVerdict.UNCERTAIN,
+        )
+    )
+
+    result = execute_frozen_pilot(
+        pilot=frozen_pilot(), reference=reference(), provider=provider, cache_dir=tmp_path
+    )
+
+    assert provider.calls == 8
+    assert result["run_status"] == "completed"
+    assert result["stopped_package_id"] is None
+    assert result["metrics"]["judge_unavailable"] == []
+    assert result["metrics"]["not_attempted"] == []
+    assert result["operational_summary"]["verdicts"] == {
+        "supported": 3,
+        "uncertain": 2,
+        "unsupported": 3,
+    }
+
+
+def test_malformed_output_is_distinct_and_does_not_fail_fast(tmp_path: Path) -> None:
+    provider = FakeProvider(malformed_at=2)
+
+    result = execute_frozen_pilot(
+        pilot=frozen_pilot(), reference=reference(), provider=provider, cache_dir=tmp_path
+    )
+
+    assert provider.calls == 8
+    assert result["run_status"] == "completed_with_malformed_outputs"
+    assert result["stopped_package_id"] is None
+    assert result["metrics"]["malformed_output"] == [frozen_pilot().selected_package_ids[1]]
+    assert result["metrics"]["judge_unavailable"] == []
+    assert result["metrics"]["not_attempted"] == []
+    assert result["operational_summary"]["malformed_outputs"] == 1
 
 
 def test_changed_evidence_or_answer_invalidates_frozen_package() -> None:
