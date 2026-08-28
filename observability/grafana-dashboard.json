@@ -1,0 +1,147 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "Precedent RAG service overview using privacy-safe Prometheus metrics.",
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+      "id": 1,
+      "targets": [{"expr": "sum(rate(precedent_http_requests_total[5m]))", "refId": "A"}],
+      "title": "Request rate",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"unit": "percentunit"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+      "id": 2,
+      "targets": [{"expr": "sum(rate(precedent_http_requests_total{status_class=~\"4xx|5xx\"}[5m])) / sum(rate(precedent_http_requests_total[5m]))", "refId": "A"}],
+      "title": "HTTP error fraction",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+      "id": 3,
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le) (rate(precedent_http_request_duration_seconds_bucket{endpoint=\"/answer\"}[5m])))", "refId": "A"}],
+      "title": "p95 /answer latency",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+      "id": 4,
+      "targets": [{"expr": "precedent_requests_in_flight", "refId": "A"}],
+      "title": "Requests in flight",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 9, "w": 8, "x": 0, "y": 8},
+      "id": 5,
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum by (le) (rate(precedent_retrieval_duration_seconds_bucket[5m])))", "legendFormat": "retrieval", "refId": "A"},
+        {"expr": "histogram_quantile(0.95, sum by (le) (rate(precedent_generation_duration_seconds_bucket[5m])))", "legendFormat": "generation", "refId": "B"},
+        {"expr": "histogram_quantile(0.95, sum by (le) (rate(precedent_resolution_duration_seconds_bucket[5m])))", "legendFormat": "resolution", "refId": "C"}
+      ],
+      "title": "RAG phase p95 latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 9, "w": 8, "x": 8, "y": 8},
+      "id": 6,
+      "targets": [{"expr": "sum by (status) (rate(precedent_answer_outcomes_total[15m]))", "legendFormat": "{{status}}", "refId": "A"}],
+      "title": "Answer and abstention rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 9, "w": 8, "x": 16, "y": 8},
+      "id": 7,
+      "targets": [{"expr": "sum by (category) (rate(precedent_failures_total[5m]))", "legendFormat": "{{category}}", "refId": "A"}],
+      "title": "Failure categories",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 9, "w": 8, "x": 0, "y": 17},
+      "id": 8,
+      "targets": [{"expr": "sum by (issue_code) (rate(precedent_citation_contract_violations_total[15m]))", "legendFormat": "{{issue_code}}", "refId": "A"}],
+      "title": "Citation-contract rejections",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 9, "w": 8, "x": 8, "y": 17},
+      "id": 9,
+      "targets": [
+        {"expr": "sum(rate(precedent_llm_input_tokens_total[15m]))", "legendFormat": "input", "refId": "A"},
+        {"expr": "sum(rate(precedent_llm_output_tokens_total[15m]))", "legendFormat": "output", "refId": "B"}
+      ],
+      "title": "LLM token rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"unit": "currencyUSD"}, "overrides": []},
+      "gridPos": {"h": 9, "w": 8, "x": 16, "y": 17},
+      "id": 10,
+      "targets": [{"expr": "sum(increase(precedent_llm_estimated_cost_usd_total[24h]))", "refId": "A"}],
+      "title": "Estimated usage cost (24h)",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"min": 0, "max": 1}, "overrides": []},
+      "gridPos": {"h": 7, "w": 12, "x": 0, "y": 26},
+      "id": 11,
+      "targets": [
+        {"expr": "precedent_retrieval_ready", "legendFormat": "retrieval", "refId": "A"},
+        {"expr": "precedent_generation_configured", "legendFormat": "generation configured", "refId": "B"}
+      ],
+      "title": "Dependency readiness",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 12, "x": 12, "y": 26},
+      "id": 12,
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le) (rate(precedent_provider_duration_seconds_bucket[5m])))", "refId": "A"}],
+      "title": "Provider p95 latency",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "tags": ["precedent", "rag", "prometheus"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "label": "Prometheus",
+        "name": "DS_PROMETHEUS",
+        "query": "prometheus",
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "browser",
+  "title": "Precedent RAG Operations",
+  "uid": "precedent-rag-operations",
+  "version": 1
+}

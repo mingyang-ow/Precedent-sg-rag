@@ -27,6 +27,8 @@ legal facts + optional principle
 - `/retrieve` works without model credentials; `/answer` uses an injectable provider boundary.
 - Startup verifies and restores immutable passage-BM25 artifacts; requests never rebuild the
   source corpus or index.
+- Prometheus-compatible metrics track HTTP and RAG phase latency, answer/abstention behavior,
+  provider and citation failures, token usage, and estimated cost without user or evidence text.
 
 ## Docker quick start
 
@@ -39,12 +41,13 @@ docker run --rm \
   --publish 8000:8000 precedent-sg-rag:local
 curl http://127.0.0.1:8000/health
 curl http://127.0.0.1:8000/ready
+curl http://127.0.0.1:8000/metrics
 ```
 
 Open `http://127.0.0.1:8000/docs`, or call `GET /health`, `GET /ready`, `POST /retrieve`, and
 `POST /answer`. Starting the service and checking readiness never call a model provider.
 
-## Current scope: Phase 6 reproducible runtime
+## Current scope: Phase 7 operational observability
 
 - Reproducible download from an immutable Hugging Face revision.
 - Streaming schema, integrity, completeness, and extraction-quality checks.
@@ -69,6 +72,8 @@ Open `http://127.0.0.1:8000/docs`, or call `GET /health`, `GET /ready`, `POST /r
 - Request IDs, structured privacy-conscious logs, and per-stage latency instrumentation.
 - Deterministic, digest-verified corpus and BM25 artifacts loaded without request-time rebuilding.
 - Locked, non-root, read-only-capable container with a separately mounted artifact bundle.
+- Per-process Prometheus metrics with bounded route, outcome, provider, failure, and citation-code
+  labels plus a Grafana-ready dashboard.
 - Layered retrieval, generation, citation, hallucination, and abstention evaluation.
 
 ## Quick start
@@ -135,7 +140,8 @@ results are in [docs/rag_baseline.md](docs/rag_baseline.md). The application-own
 design is in [docs/production_citation_contract.md](docs/production_citation_contract.md). Service
 configuration, endpoints, error mapping, and local startup are in [docs/api.md](docs/api.md).
 Artifact construction, failure behavior, Docker usage, and security posture are in
-[docs/deployment.md](docs/deployment.md).
+[docs/deployment.md](docs/deployment.md). Metric semantics, privacy constraints, PromQL examples,
+and the Grafana dashboard are in [docs/observability.md](docs/observability.md).
 
 ## Roadmap
 
@@ -151,9 +157,9 @@ Artifact construction, failure behavior, Docker usage, and security posture are 
 7. Evidence-ID production citation contract. ✓ Application-owned source resolution and safe
    referential validation complete.
 8. FastAPI service. ✓ Typed offline-tested HTTP boundary with injectable provider.
-9. Docker plus persistent retrieval artifacts. Implementation complete; executable container gate
-   pending CI because this workstation has no container runtime.
-10. Observability and interviewer-facing demo polish. Next after the Docker gate passes.
+9. Docker plus persistent retrieval artifacts. ✓ Non-root/read-only CI gate complete.
+10. Operational observability. ✓ Privacy-safe Prometheus metrics and Grafana-ready dashboard.
+11. Security and abuse testing. Next.
 
 Dataset material is CC BY 4.0 and remains under its upstream licence. Project code is MIT
 licensed. Do not treat the project licence as relicensing the dataset or source judgments.

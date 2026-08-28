@@ -98,6 +98,7 @@ uv run uvicorn sg_legal_rag.api.app:app --host 127.0.0.1 --port 8000
 curl --fail http://127.0.0.1:8000/health
 curl --fail http://127.0.0.1:8000/ready
 curl --fail http://127.0.0.1:8000/version
+curl --fail http://127.0.0.1:8000/metrics
 ```
 
 For a non-default bundle, set `PRECEDENT_RETRIEVAL_ARTIFACTS`. Startup, health, readiness, version,
@@ -142,8 +143,8 @@ capabilities, sets `no-new-privileges`, and makes the container root filesystem 
 
 Fixture-level build, corruption, incompatibility, no-rebuild, retrieval-equivalence, and API tests
 run in the normal Python suite. CI separately builds the image, checks its configured user, mounts
-a deterministic synthetic bundle, and exercises `/health`, `/ready`, and `/retrieve` with no API
-credential.
+a deterministic synthetic bundle, and exercises `/health`, `/ready`, `/metrics`, and `/retrieve`
+with no API credential. The metrics scrape requires no writable container state.
 
 Measured on the development host on 27 August 2026, using the complete pinned corpus:
 

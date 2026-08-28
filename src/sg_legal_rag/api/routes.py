@@ -6,6 +6,7 @@ from functools import partial
 from typing import Any, TypeVar
 
 from fastapi import APIRouter, Request, Response
+from prometheus_client import CONTENT_TYPE_LATEST
 
 from sg_legal_rag.generation.production_contract import (
     PRODUCTION_CITATION_CONTRACT_VERSION,
@@ -14,6 +15,7 @@ from sg_legal_rag.generation.production_contract import (
     production_schema_signature,
 )
 
+from .metrics import ApiMetrics
 from .models import (
     AnswerRequest,
     AnswerResponse,
@@ -42,6 +44,10 @@ ERROR_RESPONSES = {
 
 def _service(request: Request) -> RAGApplicationService:
     return request.app.state.rag_service
+
+
+def _metrics(request: Request) -> ApiMetrics:
+    return request.app.state.metrics
 
 
 def _timings(value: ServiceTimings) -> LatencyBreakdown:
@@ -73,6 +79,22 @@ async def health() -> HealthResponse:
 
 
 @router.get(
+    "/metrics",
+    response_class=Response,
+    summary="Prometheus metrics",
+    description=(
+        "Exposes privacy-safe operational metrics. This endpoint should be network-restricted "
+        "to internal monitoring systems in production."
+    ),
+)
+async def metrics(request: Request) -> Response:
+    return Response(
+        content=_metrics(request).render(),
+        headers={"Content-Type": CONTENT_TYPE_LATEST},
+    )
+
+
+@router.get(
     "/ready",
     response_model=ReadinessResponse,
     responses={503: {"model": ReadinessResponse}},
@@ -84,6 +106,7 @@ async def health() -> HealthResponse:
 )
 async def ready(request: Request, response: Response) -> ReadinessResponse:
     retrieval, generation = _service(request).readiness()
+    _metrics(request).set_readiness(retrieval=retrieval, generation=generation)
     if not retrieval:
         response.status_code = 503
         status = "not_ready"
@@ -163,6 +186,7 @@ async def retrieve(payload: RetrieveRequest, request: Request) -> RetrieveRespon
         generation_ms=0.0,
         resolution_ms=0.0,
     )
+    _metrics(request).record_rag_operation(operation="retrieve", outcome="success")
     return RetrieveResponse(
         request_id=current_request_id(),
         package_id=package.package_id,
@@ -202,6 +226,8 @@ async def answer(payload: AnswerRequest, request: Request) -> AnswerResponse:
         generation_ms=round(operation.timings.generation_ms, 3),
         resolution_ms=round(operation.timings.resolution_ms, 3),
     )
+    _metrics(request).record_rag_operation(operation="answer", outcome="success")
+    _metrics(request).record_answer_outcome(resolved.status.value)
     return AnswerResponse(
         request_id=current_request_id(),
         contract_version=resolved.contract_version,
