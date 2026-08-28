@@ -144,11 +144,11 @@ gate.
 
 ## RAG boundary and remaining limitations
 
-The next phase should use retrieved passage text and its source judgment metadata, evaluate
-claim-level faithfulness and citation correctness, and report warm/cold coverage. It should abstain
-or disclose insufficient corpus coverage when a target has no historical evidence. Facts-only
-evaluation must remain prominent because extracted principles are not always available in a real
-user request.
+The downstream RAG work uses retrieved passage text and source-judgment metadata, evaluates
+claim-level faithfulness and citation correctness, and reports warm/cold coverage. It abstains or
+discloses insufficient corpus coverage when the supplied evidence is too weak. Facts-only
+evaluation remains prominent because extracted principles are not always available in a real user
+request.
 
 Known limitations remain:
 

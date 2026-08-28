@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 3 is implemented and verified offline. The first 12-call pilot attempt was rejected before
+Phase 3 is complete. The first 12-call pilot attempt was rejected before
 inference because the Responses API request used the obsolete top-level `verbosity` field. A later
 one-call canary proved that the repaired provider, schema, parsing, and citation-validation path
 works, but it also exposed a methodology defect: the old "oracle" supplied an unrelated historical
@@ -18,13 +18,13 @@ the frozen 12-case pilot were then manually adjudicated, blind to their model ou
 were made during adjudication. That pilot is preserved unchanged as an answer-generation
 diagnostic. A separate balanced behavioral pilot has now been frozen after deterministic blind
 sequential evidence review. It contains six answer-expected and six abstain-expected records,
-balanced 6/6 across facts-only and facts-plus-principle queries. The current decision is:
+balanced 6/6 across facts-only and facts-plus-principle queries. The frozen pilot was executed with
+all 12 provider/schema calls succeeding. A later context-isolated review re-adjudicated the same
+model-visible inputs without prior labels or hidden retrieval diagnostics. Against that clean-room
+reference, the preserved outputs achieved 72.2% balanced accuracy (TP 7, TN 2, FP 1, FN 2).
 
-> **BALANCED BEHAVIORAL PILOT FROZEN — PAID INFERENCE APPROVAL HOLD**
-
-All ten retrieved packages were judged answerable, so all 12 pilot records now expect an answer.
-The separate behavioral sample measures both sides of the decision boundary. Paid inference
-remains unapproved, and no API calls were made while constructing either ground truth.
+The small engineered sample remains a decision-boundary diagnostic rather than evidence of
+production legal reliability or natural answer/abstention prevalence.
 
 ## Scope and model choice
 
@@ -357,11 +357,13 @@ uv run sg-legal-rag-cleanroom --evaluate
 uv run sg-legal-rag-citation-audit
 ```
 
-## Completion gate
+## Completion outcome
 
-Proceed to production engineering only if retrieved-context grounded end-to-end success and
-abstention behavior are credible on both query modes, the oracle/retrieval gap is understood, the
-manual semantic review finds no material unsupported-claim pattern, and cold-start limitations can
-be surfaced honestly. The answer-only pilot cannot satisfy the abstention part of this gate on its
-own. Until inference and an independently approved abstention evaluation are complete, the gate
-remains closed.
+The balanced pilot and clean-room review evaluated both sides of the decision boundary while
+preserving the answer-only pilot as a separate historical diagnostic. Their mixed results justified
+moving citation authority and integrity enforcement into application code, but they did not
+establish production legal reliability. The project therefore proceeded with explicit cold-start,
+retrieval, sample-size, and evaluator limitations rather than treating this pilot as a release
+quality estimate. The resulting production boundary is documented in the
+[citation contract](production_citation_contract.md), [API](api.md), and
+[deployment contract](deployment.md).
