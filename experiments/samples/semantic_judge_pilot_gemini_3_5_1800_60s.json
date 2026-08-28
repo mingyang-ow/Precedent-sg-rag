@@ -1,0 +1,406 @@
+{
+  "expected_calls": 8,
+  "judge_prompt_signature": "10309f969f41c8908fbdc993dd0bc28bf4ea40195c59526262383d62e3717fd6",
+  "judge_prompt_version": "semantic-judge-prompt-v1",
+  "judge_rubric_signature": "5618546e61f16b1133d603e87f22ae32511debc12add1e8ee68ce4b761928d2f",
+  "judge_rubric_version": "semantic-grounding-rubric-v1",
+  "judge_schema_signature": "57fffdd2fad91b372adcb090c75d9153e82776408c19982eef8d16862c50617f",
+  "judge_schema_version": "semantic-judge-provider-schema-v2",
+  "package_payload_digest": "88f931410774c248c3614425fbb0415f69ac9447b83b7c586e5c23711c16d08b",
+  "package_version": "semantic-judge-package-v1",
+  "packages": [
+    {
+      "answer_digest": "80def651994dc64e03ce9e9adb093f23ea7a09d6d2d3983d5c2ce84cca70af19",
+      "evidence": [
+        {
+          "case_id": "case:30514",
+          "case_name": "Public Pros ecutor v Rosman bin Abdullah [2010]",
+          "evidence_id": "E1",
+          "passage": "1 The Appellant had been convicted of the capital charge of trafficking in not less than 57.43g of diamorphine in 2010 (see Public Pros ecutor v Rosman bin Abdullah [2010] SGHC 271). The Appellant then appealed against the conviction and sentence and this court dismissed the appeal in April 2011. On 25 July 2011, the Appellant also submitted a petition for clemency to the President, which was rejected. 2 Subsequently, on 14 November 2012, the Singapore Parliament passed the Misuse of Drugs (Amendment) Act 2012 (Act 30 of 2012) which introduced the new s 33B into the Misuse of Drugs Act (Cap 185, 2008 Rev Ed) (âMDAâ). We set out the relevant provisions of s 33B of the MDA (âs 33Bâ) below: Discretion of court not to impose sentence of death in certain circumstances 33B.â (1) Where a person commits or attempts to commit an offence under section 5(1) or 7, being an offence punishable with death under the sixth column of the Second Schedule, and he is convicted thereof, the court â ( a ) may, if the person satisfies the requirements of subsection (2), instead of imposing the death penalty, sentence the person to imprisonment for life and, if the person is sentenced to life imprisonment, he shall also be sentenced to caning of not less than 15 strokes; or ( b ) shall, if the person satisfies the requirements of subsection (3), instead of imposing the death penalty, sentence the person to imprisonment for life. (2) The requirements referred to in subsection (1)( a ) are as follows: ( a ) the person convicted proves, on a balance of probabilities, that his involvement in the offence under section 5(1) or 7 was restricted â (i) to transporting, sending or delivering a controlled drug; (ii) to offering to transport, send or deliver a controlled drug; (iii) to doing or offering to do any act preparatory to or for the purpose of his transporting, sending or delivering a controlled drug; or (iv) to any combination of activities in sub-paragraphs (i), (ii) and (iii)",
+          "source_judgment": "[2016] SGCA 62",
+          "source_year": 2016
+        }
+      ],
+      "evidence_digest": "be60a0b9ea80c29da390f0ad8ad708e5f01c4e542dc9eafd7052c89b9e958259",
+      "generated_answer": {
+        "claims": [
+          {
+            "evidence_id": "E1",
+            "statement": "The precedent concerns a person convicted of a capital diamorphine-trafficking charge whose appeal was dismissed and clemency petition rejected.",
+            "supporting_quote": "The Appellant had been convicted of the capital charge of trafficking in not less than 57.43g of diamorphine... this court dismissed the appeal... a petition for clemency to the President... was rejected."
+          },
+          {
+            "evidence_id": "E1",
+            "statement": "The passage sets out s 33B, under which life imprisonment may replace the death penalty if specified requirements are satisfied, including proving on a balance of probabilities that involvement was restricted to listed activities.",
+            "supporting_quote": "may, if the person satisfies the requirements of subsection (2), instead of imposing the death penalty, sentence the person to imprisonment for life"
+          }
+        ],
+        "explanation": "The passage identifies a directly relevant capital drug-trafficking precedent involving a dismissed appeal and rejected clemency petition, and sets out the statutory s 33B sentencing framework. It does not establish whether the present client satisfies that framework or address the framing/knowledge defence. This is an evaluation output, not legal advice.",
+        "recommended_case_id": "case:30514",
+        "status": "answered"
+      },
+      "package_digest": "e9ea386ef14099bc75946c2ed6635d41844514f886048b4cfeb556fbc648421e",
+      "package_version": "semantic-judge-package-v1",
+      "query_mode": "facts_only",
+      "query_text": "My client was convicted on a capital drug trafficking charge, with his defence at trial being that he was framed and lacked knowledge of the drugs. His appeal was dismissed, clemency was rejected, and his execution is scheduled for tomorrow.",
+      "source_package_id": "55b464702f081a3ff6d688fb"
+    },
+    {
+      "answer_digest": "f13387addb02cbc82bd46d4e1b2423ee30396ee5a7030cb21dd3c937bf009447",
+      "evidence": [
+        {
+          "case_id": "case:4577",
+          "case_name": "Boardman v Phipps [1967]",
+          "evidence_id": "E1",
+          "passage": "80 The factual basis of this argument is that any control Mr Tan had over the money contributed by the investors to the Venture was derived solely from his office as a director of WBL. Furthermore, even as a director he did not have unilateral control over such money since Mr Rithy was also a director of WBL and thus could veto his decisions. We have dealt with the second of these two points at [64]â[66] above and our answer does not need to be repeated. As to the former, we reject Mr Singhâs contention. While we have found that Mr Tan undertook fiduciary obligations in his personal capacity, he was also a director of WBL with â as we have shown â the ability to exercise unilateral custodial powers over the assets of WBL in which the investors had an interest. The relevant question for determination is whether Mr Tan can owe concurrent fiduciary duties both to Mr Rai, a third party and WBL. 81 We turn to this at [84] below after disposing of Mr Singhâs argument on the application of the principle in Said v Butt . 82 The principle in Said v Butt provides that the law will âexempt directors from personal liability for the contractual breaches of their company (whether through the tort of inducement of breach of contract or unlawful means conspiracy) if their acts, in their capacity as directors, are not themselves in breach of any fiduciary or other personal legal duties owed to the companyâ ( Sandipala at [62]). 83 The detailed factual analysis above makes it plain that this is not a case which involves a companyâs breach of contract, in respect of which a claim has been brought to hold a director personally liable. Mr Raiâs claim against Mr Tan is not premised on a contract breached by WBL but, rather, against Mr Tan as a fiduciary in his own right. The principle in Said v Butt , in short, is not engaged and we do not need to spend any time further on this issue. 84 Mr Singh argues that a director may not, outside his capacity as a director of a co",
+          "source_judgment": "[2022] SGCA 62",
+          "source_year": 2022
+        }
+      ],
+      "evidence_digest": "bfe1356ad56c94d27b8a52668482eac1facce69246459bb195f2b293d727985b",
+      "generated_answer": {
+        "claims": [
+          {
+            "evidence_id": "E1",
+            "statement": "The passage states the Said v Butt principle that directors are generally exempt from personal liability for their company's contractual breaches when acting as directors without breaching fiduciary or other personal legal duties owed to the company.",
+            "supporting_quote": "the law will “exempt directors from personal liability for the contractual breaches of their company ... if their acts, in their capacity as directors, are not themselves in breach of any fiduciary or other personal legal duties owed to the company”"
+          }
+        ],
+        "explanation": "The passage identifies the relevant principle concerning whether a director may be personally liable for the company's contractual breach. It does not determine whether the present director is personally liable on these facts.",
+        "recommended_case_id": "case:4577",
+        "status": "answered"
+      },
+      "package_digest": "1e2583a78544f886928c0dafdd7d81240a55a23dfd772d36140a41edc1a2abb0",
+      "package_version": "semantic-judge-package-v1",
+      "query_mode": "facts_only",
+      "query_text": "My client invested in a luxury watch buyback scheme operated by the other party's company, which has now failed to honor its contractual repurchase obligations. The core issue is a straightforward breach of contract claim for the failed repurchase, and we are also seeking to hold the company's director personally liable.",
+      "source_package_id": "266a3190b2ba1df079c15645"
+    },
+    {
+      "answer_digest": "c87e702ec0a2f75d9f92ac80de60f0b5dee67c09359aecb86d640900bf54e755",
+      "evidence": [
+        {
+          "case_id": "case:46408",
+          "case_name": "Willis and others v Barron and others [1902]",
+          "evidence_id": "E1",
+          "passage": "ngs in the circumstances: â¦ Now in a case like this, I think it was the duty of the brothers, and of Mr Roberts, who was their legal adviser, to see that the Plaintiff, who was or (in regard to the doubts of Mr Roberts) might be entitled to the whole estate, and who was called upon to alienate the whole for the alleged value of a fourth part, â¦ did clearly understand what his right was, and what he was doing. In the circumstances in which they were placed, I think it was the duty of the Plaintiffâs brothers and of Mr Roberts, to see and be able to shew, that the Plaintiff did, in fact, receive and act upon independent advice as to his rights, and that he parted with his rights with knowledge and on deliberation. On considering the evidence of Mr Roberts, in many places ambiguously expressed, I own that I am not satisfied from it that the Plaintiff understood, or ever had communicated to him, the true state of the case. â¦ [emphasis added] 76 The next case, Willis and others v Barron and others [1902] AC 271 (â Willis â), is a decision of the House of Lords. There, the plaintiff executed a deed by which she renounced her rights under a settlement in favour of the son of Mr Skinner, the solicitor who had prepared and advised her on the deed and who was also her trustee under the settlement. The plaintiff executed the deed in the belief that it was meant merely to correct a âmistakeâ in an earlier deed when, in fact, it altered her position detrimentally, among other things, by cutting down the life interest that she was entitled to under the settlement. 77 The House of Lords set aside the deed as Mr Skinner had failed to advise the plaintiff on how the deed affected her rights and position. It was also held that because Mr Skinner was in a position of conflict, he should have advised the plaintiff to obtain independent legal advice. Willis is a slightly different case from the present as the conflict there arose out of self-dealing. Be that as it may, W",
+          "source_judgment": "[2015] SGCA 36",
+          "source_year": 2015
+        },
+        {
+          "case_id": "case:16956",
+          "case_name": "In re L (Vulnerable Adults with Capacity: Courtâs Jurisdiction) (No 2) [2012]",
+          "evidence_id": "E2",
+          "passage": "facing other problems as well, for example, certain definitional problems, such as defining the âbest interestsâ of the individual. Legislation was therefore enacted specifically to address these problems, the relevant one in question now being the possible lacunae in the law (regarding jurisdiction).Given this background, it would make sense then that jurisdiction is seised only insofar as the statute prescribes â where the substantial dispute revolves around the mental capacity of an individual, or matters connected therewith. 20 A related issue of law which arose was whether âvulnerableâ individuals, or those subject to undue influence, fell under the protection of the MCA. Given my observations regarding the law on jurisdiction above, it would only be consistent that the issues which do not involve the mental capacity of the individual would not fall within the protection of the MCA. 21 This position is supported by the decision of In re L (Vulnerable Adults with Capacity: Courtâs Jurisdiction) (No 2) [2012] 3 WLR 1439 (â In re L â). In that case, the issue arose as to whether the court had the jurisdiction to issue an order to âprotectâ a vulnerable elderly couple from their violent son, if it were found that the elderly couple were of sound mind (but vulnerable nonetheless). At [38] and [39], McFarlane LJ considered counselâs argument that the issue of adding âvulnerable adultsâ into the scope of the MCA had already been considered and that the eventual decision was not to include them: 38 It was apparently this category of individuals that the committee drew back from recommending should be included within the terms of the Bill. 39 Miss Lieven therefore submits that the resulting Act expressly left out of its terms, as it clearly does (see section 2(1) of the 2005 Act), those individuals who do not lack mental capacity. Her case is that the inevitable conclusion must be that Parliament intended individuals outside the compass of the",
+          "source_judgment": "[2013] SGHC 201",
+          "source_year": 2013
+        },
+        {
+          "case_id": "case:38051",
+          "case_name": "Sandz Solutions (Singapore) Pte Ltd v Strategic Worldwide Assets Ltd [2014]",
+          "evidence_id": "E3",
+          "passage": "not the result of the artificial and inevitably intimidating environment of the courtroom. She did not speculate on matters outside her domain. And her domain, without intending any disrespect, is implementing the defendantâs clockwork-like standard operating procedure for routine conveyancing. For the reasons set out in [58] and [59] above, I have found it highly improbable that the first plaintiff asked the question which he says elicited the third representation. Those same reasons apply equally to make it highly improbable that a cautious person like Susan Chua â being a non-lawyer and speaking to a stranger whom I find was not identified to her as a client, as a prospective client or as a clientâs counterparty â would have answered that strangerâs request for legal and commercial advice with an unequivocal yes or no. 61 I am of course aware of the risks of relying on demeanour alone to make critical findings of veracity or mendacity: Sandz Solutions (Singapore) Pte Ltd v Strategic Worldwide Assets Ltd [2014] SGCA 27 a [42]-[56]. That is why I do not rely on my assessment of Susan Chuaâs demeanour alone to make my finding that she did not make the third representation as alleged. Instead, I rely on her demeanour to support the reasonable inferences which I draw and analyse in these paragraphs based on the undisputed and indisputable facts and the inherent probabilities. 62 Fourth, if the plaintiffs in fact wanted legal and commercial advice on 20 September 2010, they had throughout that day â and indeed, throughout the preceding weekend â the means to contact Lee Ping of WLaw, the lawyer whom they eventually instructed to act for them in purchasing 13A Jalan Berjaya (see [26] above). The second plaintiff had had direct dealings with Lee Ping from an earlier conveyancing transaction in which the second plaintiff had instructed Lee Ping on behalf of the second plaintiffâs mother. [note: 51] The second plaintiff thus had Lee Pingâs email address",
+          "source_judgment": "[2014] SGHC 160",
+          "source_year": 2014
+        }
+      ],
+      "evidence_digest": "6e518f99e6097554a3627931b67028238944639b3bcb2ba41c27cbe6b966d844",
+      "generated_answer": {
+        "claims": [
+          {
+            "evidence_id": "E1",
+            "statement": "Willis is relevant where a solicitor prepared and advised on a deed that adversely affected the claimant’s rights.",
+            "supporting_quote": "the solicitor who had prepared and advised her on the deed"
+          },
+          {
+            "evidence_id": "E1",
+            "statement": "A solicitor in a conflict position should advise the affected person to obtain independent legal advice.",
+            "supporting_quote": "because Mr Skinner was in a position of conflict, he should have advised the plaintiff to obtain independent legal advice"
+          }
+        ],
+        "explanation": "Willis directly concerns a solicitor who prepared and advised on a deed affecting a beneficiary’s rights, and supports the relevant authority on advising about the deed’s effect and recommending independent legal advice. The evidence does not establish whether the present client satisfies that principle or any loss claim.",
+        "recommended_case_id": "case:46408",
+        "status": "answered"
+      },
+      "package_digest": "94d86fd1d0627c081a0b2325d6c822a9c1024c3002018d8e45595c0aa9c9dd2a",
+      "package_version": "semantic-judge-package-v1",
+      "query_mode": "facts_only",
+      "query_text": "My client was the intended beneficiary of a substantial gift from her elderly mother, for which the other party was instructed to prepare the deed. The other party's alleged delays and advice regarding a capacity assessment meant the gift was not executed before the mother's death, and my client now claims the lost gift value and related legal costs from the firm.",
+      "source_package_id": "615689094ac2690f02642f7d"
+    },
+    {
+      "answer_digest": "d14e804b20c3436ee1465b2ce85c72ac4ed120e92da5c00f527afb81054056bd",
+      "evidence": [
+        {
+          "case_id": "case:44032",
+          "case_name": "Trans-World (Aluminium) Ltd v Cornelder China (Singapore) [2003]",
+          "evidence_id": "E1",
+          "passage": "e 136 Ã ABOD at p 7. In the same vein, in the 2018 Investment Proposal, it is stated that the watches that were under the investment scheme were âQueue-cutting watches (e.g. 200 piece limited edition, 5000 people queuing)â. 137 Foot Note 137 Ã ABOD at p 26. I therefore find, on the balance of probabilities, that the Oral Representations were made to Mr Gary Wong and Mr Jowin Fung (as MCA Limitedâs representative) as part of the defendantsâ efforts to promote the WatchFund investment scheme, and that the Oral Representations were relied upon by Mr Gary Wong and Mr Jowin Fung. But the fact that the pleaded representations were made does not dispose of the issue of whether the defendants are liable for fraudulent and/or negligent misrepresentation. The plaintiffs have to prove all the elements of the tort (see [39] and [41] above) in order to succeed. 65 The burden lies on the plaintiffs to establish misrepresentation ( Fuji Xerox at [50], citing Trans-World (Aluminium) Ltd v Cornelder China (Singapore) [2003] 3 SLR(R) 501 at [29]). It is incumbent on the plaintiffs to adduce proof that the defendants have made false representations of fact. The plaintiffs have, however, produced no evidence to demonstrate the falsity of the representations that underlie their case. 66 In their closing submissions, the plaintiffs specifically submit that the representations made by the defendants were false in that: 138 Foot Note 138 Ã PCS at para 45. 67 As stated above at [48150], the plaintiffs have failed to plead the Brand-New Watches Representation and the Source Representation as part of their misrepresentation claims, and are therefore precluded from relying on them. It will be highly prejudicial to the defendants if the plaintiffs are allowed to belatedly bring items (b), (c) and (d) in their closing submissions as the defendants would be deprived of the opportunity to lead evidence in their defence to address these allegations. Items (a), (e) and (f) relate to the D",
+          "source_judgment": "[2024] SGHC 110",
+          "source_year": 2024
+        }
+      ],
+      "evidence_digest": "d87cb286b5337347da7a4db28bca49e62ae4e8aba962c34be0a9f5f868cfbc6f",
+      "generated_answer": {
+        "claims": [
+          {
+            "evidence_id": "E1",
+            "statement": "The burden lies on the plaintiffs to establish misrepresentation.",
+            "supporting_quote": "The burden lies on the plaintiffs to establish misrepresentation"
+          },
+          {
+            "evidence_id": "E1",
+            "statement": "The plaintiffs must prove that the defendants made false representations of fact.",
+            "supporting_quote": "It is incumbent on the plaintiffs to adduce proof that the defendants have made false representations of fact."
+          }
+        ],
+        "explanation": "The passage identifies the directly relevant misrepresentation authority and states the burden of proof. It does not resolve whether the present facts satisfy that test, nor does it address personal liability of the director or the contractual repurchase claim.",
+        "recommended_case_id": "case:44032",
+        "status": "answered"
+      },
+      "package_digest": "96599036d346e31277ee39b8b8749d1192718e42751136a2cd7e70fb81ba0869",
+      "package_version": "semantic-judge-package-v1",
+      "query_mode": "facts_principle",
+      "query_text": "My client invested in a luxury watch buyback scheme operated by the other party's company, which has now failed to honor its contractual repurchase obligations. The core issue is a straightforward breach of contract claim for the failed repurchase, and we are also seeking to hold the company's director personally liable. The burden lies on the plaintiffs to establish misrepresentation and it is incumbent on the plaintiffs to adduce proof that the defendants have made false representations of fact.",
+      "source_package_id": "7cfe4dcc0cc44a18b4f6a498"
+    },
+    {
+      "answer_digest": "b965e6b54854fb1c70d51085ce66da547252c84e44d509feddef4b875a64516d",
+      "evidence": [
+        {
+          "case_id": "case:32100",
+          "case_name": "Public Prosecutor v Soon Nyet Chin [2014]",
+          "evidence_id": "E1",
+          "passage": "e were a group of suspected drug abusers. Offended by the police officerâs remarks, he bore a grudge against him and thus approached the police officer to attack him when he spotted the latter at a coffee shop a year later. The offender pleaded guilty to a charge under s 332 of the Penal Code. The High Court increased the offenderâs sentence to ten monthsâ imprisonment on appeal, taking into account the vengeful nature of the attack and the offenderâs long list of criminal antecedents spanning across nearly thirty years which demonstrated his scant regard for the law (see Public Prosecutor v Alfian Bin Abdullah (MA 9053/2015/01)). 67 The cases show that the custodial threshold is generally crossed for offences under s 332 of the Penal Code. Fines would only be appropriate at the lowest end of the harm-and-culpability spectrum. This sentencing option should generally be available only to young offenders or offenders with some mental disorder. For example, in Public Prosecutor v Soon Nyet Chin [2014] SGDC 269, a $10,000 fine was imposed after the District Court took into account the offenderâs Major Depressive Illness and Alcohol Use Disorder (at [17]). 68 Category 2 comprises offences of a higher level of seriousness. These are usually cases where (a) minor injuries are caused but the culpability of the offender is high or (b) serious injuries are caused to the victim but the culpability of the offender is low. Where there are three or more aggravating factors that indicate enhanced culpability or more serious injuries, the offence would generally fall into Category 2. Examples of such aggravating factors would include the use of a weapon or dangerous means, a more serious harm caused such as a deep cut, sustained or repeated attacks, intimidation and violence by a group of offenders and the presence of violence-related antecedents, particularly where they were also directed at the police. Again, we look at some of the sentencing precedents which provide ex",
+          "source_judgment": "[2017] SGHC 306",
+          "source_year": 2017
+        },
+        {
+          "case_id": "case:1512",
+          "case_name": "Amin Bin Abdullah v Public Prosecutor [2017]",
+          "evidence_id": "E2",
+          "passage": "d with any mental illness. She was sentenced to 20 yearsâ imprisonment. 119 The offenders in these three cases were young domestic helpers who had planned the killings of their employers or employersâ family members. The acts were clearly premeditated. The accusedâs culpability was lower since his act was not a premeditated one, as I have found. On the other hand, the offenders in the above three cases pleaded guilty, had no criminal records, and either had some mental illness or faced some form of pressure in the course of work. Here, the accused claimed trial (thus showing a lack of remorse) and had a criminal record which included violent crime. Given his deficits in executive functioning that led him to commit the offence, I decided that a sentence on the lower end of the range of 18 to 20 years would be appropriate. 120 Weighing all the facts and circumstances of the case, and applying the principles of deterrence and retribution, I decided to impose a sentence of 18 yearsâ imprisonment with effect from 17 December 2013, the date the accused was placed in remand. This stiff sentence was to punish the accused for a heinous crime in which he unnecessarily took away a life, to deter him from committing further offences and to serve as a general signal that such acts are not to be condoned. Given the substantial length of the imprisonment term, I saw no reason to impose a further term of imprisonment in lieu of caning, as pressed for by the Prosecution. I was fortified in this view by the decision of the High Court released after I had imposed the sentence on the accused: Amin bin Abdullah v Public Prosecutor [2017] SGHC 215. There, the High Court held that the starting point should be that no enhancement of a sentence in lieu of caning should be ordered unless there are grounds to do so (at [87]). 121 For the reasons given, I convicted the accused on the charge he faced and imposed the sentence of 18 yearsâ imprisonment with effect from 17 December 2013.",
+          "source_judgment": "[2017] SGHC 307",
+          "source_year": 2017
+        },
+        {
+          "case_id": "case:38819",
+          "case_name": "Shamsul bin Abdullah v Public Prosecutor [2002]",
+          "evidence_id": "E3",
+          "passage": "atory imprisonment up to 15 years and shall be liable to caning. There is presently no sentencing framework for offences under s 326 of the Penal Code. There are, however, sentencing frameworks for offences under s 324 and s 325 of the Penal Code (set out in Ng Soon Kim v Public Prosecutor [2020] 3 SLR 1097 (â Ng Soon Kim â) and Public Prosecutor v BDB [2018] 1 SLR 127 (â BDB â) respectively). Recent cases concerning the sentencing of offences under s 326 of the Penal Code have, by analogy, applied the framework and considered the same factors (see, eg , Public Prosecutor v Azlin bte Arujunah and another [2020] SGHC 168 (â Azlin â) at [196]â[211]; Public Prosecutor v Miya Manik [2020] SGHC 164 (â Miya Manik â) at [119]â[130]). 52 Based on the above cases, the following factors are relevant to sentencing where grievous hurt has been caused by dangerous means: (a) the seriousness of the injuries; (b) the accusedâs culpability; (c) the dangerous means used and the potential harm that could have resulted from the chosen means of offending; and (d) the relevant aggravating and/or mitigating factors. 51 Foot Note 51 Ã PSS at para 8. In Shamsul bin Abdullah v Public Prosecutor [2002] 2 SLR(R) 838, Yong Pung How CJ at [24] also affirmed that a similar list of factors is to be considered when sentencing the accused under s 326 of the Penal Code: 53 There are at least three key factors that justify the imposition of a long imprisonment term for the first charge: (a) The brutality and unprovoked nature of the accusedâs attack. (b) The dangerous and deadly weapons used and the concealment of the weapons after the attack. (c) The extensive, severe and permanent injuries inflicted on the victim. 54 The accusedâs level of culpability is high as his attack on the victim was senseless, unprovoked and brutal. 52 Foot Note 52 Ã PSS at para 9(b). The key events leading up to the accusedâs attack on the victim are set out in chronological order, as follows:",
+          "source_judgment": "[2022] SGHC 60",
+          "source_year": 2022
+        }
+      ],
+      "evidence_digest": "670b87ca4bd239a34e9c8671e2c344634ffeec933bb93454cc780971421d4a0e",
+      "generated_answer": {
+        "claims": [
+          {
+            "evidence_id": "E3",
+            "statement": "Sentencing for grievous hurt caused by dangerous means considers the seriousness of the injuries, the offender’s culpability, the dangerous means and potential harm, and aggravating or mitigating factors.",
+            "supporting_quote": "the following factors are relevant to sentencing where grievous hurt has been caused by dangerous means: (a) the seriousness of the injuries; (b) the accused’s culpability; (c) the dangerous means used and the potential harm that could have resulted from the chosen means of offending; and (d) the relevant aggravating and/or mitigating factors."
+          },
+          {
+            "evidence_id": "E3",
+            "statement": "A long imprisonment term may be justified by a brutal, unprovoked attack using dangerous and deadly weapons that inflicts extensive, severe and permanent injuries.",
+            "supporting_quote": "There are at least three key factors that justify the imposition of a long imprisonment term: (a) The brutality and unprovoked nature of the accused’s attack. (b) The dangerous and deadly weapons used ... (c) The extensive, severe and permanent injuries inflicted on the victim."
+          }
+        ],
+        "explanation": "The passage supports Shamsul as relevant authority for assessing serious injury, culpability, dangerous means and aggravating factors, including brutal attacks with deadly weapons and severe injuries. It does not establish that the present sentence is correct or that the facts satisfy the test.",
+        "recommended_case_id": "case:38819",
+        "status": "answered"
+      },
+      "package_digest": "dff2a42e8a7698579f5ef64fc75a24ba5fc2c96cdcd0d694c8cc126982e46ce4",
+      "package_version": "semantic-judge-package-v1",
+      "query_mode": "facts_principle",
+      "query_text": "My client pleaded guilty to attempted murder after a sustained, premeditated attack where he lured the victim to a location, trapped her, and used multiple weapons to inflict severe, life-threatening injuries. The court has just sentenced him to 16 years and caning, rejecting our submission for a lower term, on the basis that his high culpability and the need for deterrence far outweigh any mitigation. The court is concerned with assessing the harm; regardless of whether the victim followed up medically, she was indeed harmed greatly and it does not lie in your mouth to take issue with her for that lack of follow up. The public is entitled to expect that the law will preserve order, security and peace. Acts which go against this will attract a commensurate response. In determining the level of public disquiet or concern, police reports are not the only measure. The court will look to the time and place of the incident, and will readily infer a substantial impact where an incident occurs in a residential neighbourhood.",
+      "source_package_id": "a35f9a4b139ba3a67608dcee"
+    },
+    {
+      "answer_digest": "7251fa953cfddbf5191d22bf019e17b75cf1d94692f2874b372605fd60ff14a8",
+      "evidence": [
+        {
+          "case_id": "case:11431",
+          "case_name": "Eng Liat Kiang v Eng Bak Hern [1995]",
+          "evidence_id": "E1",
+          "passage": "commenced more than two months after the plaintiffs had taken out this action and is clearly to bolster the defendants` position in this stay application. Even if that were not the case, it does not behove them to complain about something of their own doing. Therefore little weight can be given to it in the consideration of the stay application. In respect of the action taken out by FFSL, that would be a factor to be considered. As for factor (k), it is not clear how the defendants would be unable to effectively make a counterclaim in this action. In any case, success in their defence would be adequate for their purpose. The plaintiffs have fired the first shot in this matter and commenced this action in Singapore in respect of contracts in which the governing law is Singapore law with Singapore courts having non-exclusive jurisdiction. The burden lies with the defendants to satisfy the court that a stay ought to be granted on the ground of forum non conveniens: see Eng Liat Kiang v Eng Bak Hern [1995] 3 SLR 97 where the Court of Appeal said (at p 103E): A stay will only be granted on the ground of forum non conveniens, where the court is satisfied that there is some other available and appropriate forum for the trial of the action. The burden of proof rests on the defendant, and the burden is not just to show that Singapore is not the natural and appropriate forum but to establish there is another available forum which is clearly or distinctly more appropriate than the Singapore forum. In the present case, the main factors favouring a stay are: Identification of the natural forum . It has been seen that in Spiliada Lord Goff of Chieveley indicated that the English court should look for the forum with which the dispute had the most real and substantive connection, and he referred in particular to factors affecting convenience or expense (such as availability of witnesses) and other factors including the law governing the relevant transaction. If the legal issues ar",
+          "source_judgment": "[2001] SGHC 144",
+          "source_year": 2001
+        },
+        {
+          "case_id": "case:25630",
+          "case_name": "Nam Kwong Medicines & Health Products Co Limited v China Insurance Company Limited [1999]",
+          "evidence_id": "E2",
+          "passage": "is unlikely to have any real and significant connection with the subject matter in the main suit in Singapore between the plaintiff and the defendant, and one that is likely to prejudice and embarrass the plaintiff if tried in the same proceedings when it should properly be the subject of a separate action to be adjudicated after the main action, then it goes without saying that little weight will be given to the mere existence of an intention to file such a third party claim, even if such an intended third party claim (viewed on its own) is more appropriately tried elsewhere e.g. in England. But if the intended claim against a third party is likely to satisfy Order 16 r 1 and is likely to be allowed as a third party action to be heard together with the main action, then it should in my view be given appropriate consideration in the overall non forum conveniens equation, and should not be ignored. 114 Counsel for the plaintiff referred me to Nam Kwong Medicines & Health Products Co Limited v China Insurance Company Limited [1999] HKCU 1216 , where the defendant applied to stay the plaintiffâs Hong Kong action in favour of Singapore on the basis that Singapore was a more natural and appropriate forum for the trial of the action and for all connected litigation including third party proceedings. Inter alia , the defendant relied on a third party claim which it intended to bring in Singapore (under its statutory right to contribution). The Hong Kong High Court held: 115 Plaintiffâs counsel also cited The Standard Steamship Ownersâ Protection and Indemnity Association (Bermuda) Ltd v Gann and another [1992] 2 Lloyd's Rep 528. After the plaintiffs there sued the defendants in England, the defendants instituted proceedings against the plaintiffs and its brokers (the main third parties) in San Diego. The defendants sought to stay the English proceedings in favour of San Diego. It was contended that the dispute should be looked at as a whole, with regard not only to t",
+          "source_judgment": "[2008] SGHC 59",
+          "source_year": 2008
+        },
+        {
+          "case_id": "case:10603",
+          "case_name": "Drolia Mineral Industries Pte Ltd v Natural Resources Pte Ltd [2002]",
+          "evidence_id": "E3",
+          "passage": "words of O 28 r 7(1), which expressly allow a defendant in an OS to make a counterclaim in the action if âhe has any claim or is entitled to any relief or remedy against the plaintiff in respect of any matter (whenever and however arising)â. There is no need for any nexus in law or in fact between the claim in the OS and the counterclaim besides the parties. It is also apparent from the rule that the mode of bringing the counterclaim is not prescribed. There is therefore nothing to prevent the appellant from bringing his counterclaim by way of a summons and/or by setting it out in an affidavit filed in the OS. 25 It is correct that the court retains the discretion under O 28 r 7(3) to decide whether, in all the circumstances of the case, a counterclaim should be allowed to continue within the OS or that it should be tried separately. Counsel for the respondent drew our attention to case law on O 15 r 5(2), a provision that mirrors O 28 r 7(3). In Drolia Mineral Industries Pte Ltd v Natural Resources Pte Ltd [2002] 1 SLR(R) 880 for example, the High Court (at [24]--â[25]) applied a two stage test involving, first, a balancing of the considerations of procedural convenience in favour of and against the disposal of the counterclaim by a separate action, and second, a consideration of what the overall justice of the case demanded. However, we found nothing in Drolia or any of the other authorities cited by the respondent which supports the point that the subject matter of a counterclaim had to have a nexus with the subject matter of the claim, failing which the counterclaim would be struck out. Where a defendant in an OS brings a counterclaim for a totally different matter from the plaintiffâs claim in the OS, there is no legal impediment to having both matters heard together or one after the other. Of course, the fact that the subject matter of a counterclaim is completely alien to the claim under a writ or an OS would be a relevant consideration for the court",
+          "source_judgment": "[2019] SGCA 55",
+          "source_year": 2019
+        }
+      ],
+      "evidence_digest": "7b8d9e8f29fcce24a5c5ba1d5eb698febb893945a559c9ba7b0d87d10e209e4e",
+      "generated_answer": {
+        "claims": [
+          {
+            "evidence_id": "E1",
+            "statement": "A stay on forum non conveniens grounds requires another available forum that is clearly or distinctly more appropriate than Singapore, with the burden on the defendant.",
+            "supporting_quote": "A stay will only be granted on the ground of forum non conveniens, where the court is satisfied that there is some other available and appropriate forum for the trial of the action."
+          },
+          {
+            "evidence_id": "E1",
+            "statement": "Identification of the natural forum considers the dispute’s real and substantive connections, including convenience, expense, witnesses, and governing law.",
+            "supporting_quote": "the forum with which the dispute had the most real and substantive connection, and he referred in particular to factors affecting convenience or expense (such as availability of witnesses) and other factors including the law governing the relevant transaction."
+          }
+        ],
+        "explanation": "The supplied passage identifies the relevant forum non conveniens authority and states the natural-forum test. It does not address the specific claim-and-counterclaim overlap point or establish that the present facts satisfy the test.",
+        "recommended_case_id": "case:11431",
+        "status": "answered"
+      },
+      "package_digest": "3e11dce57c136a8fefb82ec76ede08d681e1518c0529559a8bde08cbc5fc5c5c",
+      "package_version": "semantic-judge-package-v1",
+      "query_mode": "facts_principle",
+      "query_text": "My client commenced a claim here, and the other party filed a counterclaim. My client then applied to dismiss that counterclaim on forum grounds, arguing the dispute should be heard elsewhere, but the court has ruled Singapore is the appropriate forum for the entire matter. The procedural convenience in having a claim and a counterclaim tried together is a relevant consideration in the identification of the natural forum of the counterclaim, particularly where the subject matter of the claim and counterclaim overlap with each other and involve similar factual issues, documentary evidence, and witnesses.",
+      "source_package_id": "4a485ec6ed04a9358fa9b711"
+    },
+    {
+      "answer_digest": "2646f707a9703cace8203d21581ce879bfecf3acdaa6ae5ee93a28a3e16dfb87",
+      "evidence": [
+        {
+          "case_id": "case:6595",
+          "case_name": "Chan Choon Ming v Low Poh Choon [1979]",
+          "evidence_id": "E1",
+          "passage": "Companies â Directors â Removal â Removal of director at extraordinary general meeting â Company seeking court declaration of removal â Whether shareholder properly represented at meeting â Whether removal of director lawful â Whether company coming to equity with clean hands Companies â Directors â Resolutions â Articles allowing resolution in writing signed by majority of directors to be valid â Majority of directors signing resolution in writing without notice to minority â Whether good faith exists â Whether notice to minority necessary Whether resolution valid : The application This was an application by Polybuilding (S) Pte Ltd, the plaintiffs. There were five defendants: (1) Lim Heng Lee; (2) Koh Guan Poh; (3) Loh Song Huat [commat] Loh Sung Wat; (4) Lim Soo Chong [commat] Lim Soo Kong; and (5) Polymotor Pte Ltd. The application sought remedies against the second defendant only. It asked for a declaration that the second defendant, Koh Guan Poh, ceased to be a director of the plaintiffs from 27 January 2001. It also asked for certain other consequential equitable remedies including an injunction. No remedy was sought against any of the other defendants. The basis of the application was that the second defendant was removed from his office as director by an ordinary resolution passed at an extraordinary general meeting of the plaintiff company. At the outset I suggested that it might be better if this matter were heard with oral evidence. The first and second defendants responded positively. The plaintiffs and other defendants were adamantly against it. So,I decided to hear the matter. At the hearing, it was obvious that no remedy was sought against the first, third, fourth and fifth defendants. It was summarily dismissed as against those four defendants. The second defendant contested the application. His ground was that the fifth defendant (Polymotor Pte Ltd) was not properly represented at the EGM of the plaintiffs (Polybuilding (S",
+          "source_judgment": "[2001] SGHC 95",
+          "source_year": 2001
+        },
+        {
+          "case_id": "case:22513",
+          "case_name": "Lornho plc v Fayed and Others (No 3) [2002]",
+          "evidence_id": "E2",
+          "passage": "This is the plaintiffsâ application for the defence to be struck out and judgment to be entered for the plaintiffs or for an âunlessâ order for the production of certain documents, pursuant to O 24 r 16 of the Rules of Court (âthe Rulesâ), because the defendants allegedly breached their discovery obligations. In the alternative, the plaintiffs contend that the court is entitled to invoke its inherent power to strike out the defence on the basis that the defendants abused the courtâs process by destroying material documents when litigation was anticipated. 2 The documents in question are emails passing between the defendants and emails passing between the defendants and the Singapore Chess Federation (âSCFâ) relating to its extra-ordinary general meeting (âEGMâ) held on 12 January 2004 (âthe Emailsâ); and the audio recordings of the EGM and SCFâs Annual General Meeting (âAGMâ) held on 26 June 2004. The relevancy of these documents was not in dispute. For the reasons set out below, I dismissed the application. 3 The plaintiffs are members of SCF and the defendants are members of the Executive Council of the SCF. The plaintiffs were members of a party that requisitioned the EGM to, amongst other things, pass a resolution to ask the defendants to step down as office bearers of SCF. In response to the requisition, the defendants published a document on the SCFâs website that the plaintiffs considered defamatory. The plaintiffs therefore commenced an action in defamation against the defendants. On 5 July 2004, the court recorded a consent order that the offending words in the document were defamatory of the plaintiffs. Consequently, the trial of the present action relates only to whether the defendantsâ defences of justification, fair comment and privilege can be established. 4 On 7 May 2004, an order of court was made for the parties to provide discovery by filing a list of documents and an affidavit verifying the same. The defendants fi",
+          "source_judgment": "[2004] SGHC 259",
+          "source_year": 2004
+        },
+        {
+          "case_id": "case:34850",
+          "case_name": "Re Duomatic [1995]",
+          "evidence_id": "E3",
+          "passage": "92 A resolution in writing signed by a majority of the Directors of the Company shall be as valid and effectual as if it had been passed at a Meeting of the Directors duly called and constituted. 41 It is common ground that NJS has not resigned his office by notice in writing to the company whether before, on or since reaching the age of 70, as contemplated by article 74 of the Companyâs articles of association. It is further not averred that NJS has been removed from office by ordinary resolution of the shareholders pursuant to article 71 of the articles of association. There has been no filing of such cessation by retirement or removal by the Company with ACRA within one month of such date as prescribed by s 173 of the Companies Act. Furthermore, the formal directorsâ and general meetingsâ resolutions and minutes of the Company maintained as required under s 188 of the Companies Act and produced in evidence related only to approvals of the annual directorsâ report and audited statement of accounts, re-election of directors and appointment of auditors. No formal resolutions or minutes of directorsâ or shareholdersâ resolutions were produced from this register which revealed any unanimous decision that NJS had or was to retire at 70. Neither were there any directorsâ or shareholdersâ resolutions or minutes from this register produced which showed the articles of association had been amended such that NJS and all directors were in future to be automatically retired upon reaching the age of 70. 42 As for contract, neither the Restructuring Agreement 2002 nor the Loan Repayment Agreement 2002 between the parties to this action provided that NJS was obliged to retire upon reaching 70. The Restructuring Agreement 2002 merely provided that he was to serve as non-executive chairman and had the right to appoint a director in his place. 43 The defendants averred that NJS had automatically retired from his directorship of the Company upon attaining the age of",
+          "source_judgment": "[2010] SGHC 242",
+          "source_year": 2010
+        }
+      ],
+      "evidence_digest": "933c6ef48ff19b648db0098cafff0e54c4cdeb568cc25374f45c1cfadcc99462",
+      "generated_answer": {
+        "claims": [
+          {
+            "evidence_id": "E1",
+            "statement": "The authority concerns removal of a director at an extraordinary general meeting.",
+            "supporting_quote": "Directors – Removal – Removal of director at extraordinary general meeting"
+          },
+          {
+            "evidence_id": "E1",
+            "statement": "The authority addresses articles permitting a written resolution signed by a majority of directors and whether signing without notice to minority directors is valid or undertaken in good faith.",
+            "supporting_quote": "Articles allowing resolution in writing signed by majority of directors to be valid – Majority of directors signing resolution in writing without notice to minority – Whether good faith exists – Whether notice to minority necessary"
+          }
+        ],
+        "explanation": "The supplied passage identifies a directly relevant Singapore authority addressing director removal and the validity and good-faith implications of written resolutions signed by a majority of directors. It does not address whether the proposed share placement is an improper dilution or whether the client's facts satisfy the applicable test.",
+        "recommended_case_id": "case:6595",
+        "status": "answered"
+      },
+      "package_digest": "864ebf1fa195d3d3a7596856ac9799dd3af0ede2f5b8ad256859480faa00566e",
+      "package_version": "semantic-judge-package-v1",
+      "query_mode": "facts_principle",
+      "query_text": "My client, the company's largest shareholder, requisitioned an EGM to remove the two executive directors. In response, the other party, using a general share issue mandate, approved a dilutive share placement to third parties that would strip my client of its controlling stake. A resolution in writing signed by a majority of the Directors shall be as effective as a resolution duly passed at a meeting of the Directors and may consist of several documents in the like form, each signed by one or more Directors.",
+      "source_package_id": "88f23f608864cf5f1372a038"
+    },
+    {
+      "answer_digest": "5f53d99847844c8ba9174e9fa973fba64ef99105c2f48fac037b1023f697cd72",
+      "evidence": [
+        {
+          "case_id": "case:6595",
+          "case_name": "Chan Choon Ming v Low Poh Choon [1979]",
+          "evidence_id": "E1",
+          "passage": "Companies â Directors â Removal â Removal of director at extraordinary general meeting â Company seeking court declaration of removal â Whether shareholder properly represented at meeting â Whether removal of director lawful â Whether company coming to equity with clean hands Companies â Directors â Resolutions â Articles allowing resolution in writing signed by majority of directors to be valid â Majority of directors signing resolution in writing without notice to minority â Whether good faith exists â Whether notice to minority necessary Whether resolution valid : The application This was an application by Polybuilding (S) Pte Ltd, the plaintiffs. There were five defendants: (1) Lim Heng Lee; (2) Koh Guan Poh; (3) Loh Song Huat [commat] Loh Sung Wat; (4) Lim Soo Chong [commat] Lim Soo Kong; and (5) Polymotor Pte Ltd. The application sought remedies against the second defendant only. It asked for a declaration that the second defendant, Koh Guan Poh, ceased to be a director of the plaintiffs from 27 January 2001. It also asked for certain other consequential equitable remedies including an injunction. No remedy was sought against any of the other defendants. The basis of the application was that the second defendant was removed from his office as director by an ordinary resolution passed at an extraordinary general meeting of the plaintiff company. At the outset I suggested that it might be better if this matter were heard with oral evidence. The first and second defendants responded positively. The plaintiffs and other defendants were adamantly against it. So,I decided to hear the matter. At the hearing, it was obvious that no remedy was sought against the first, third, fourth and fifth defendants. It was summarily dismissed as against those four defendants. The second defendant contested the application. His ground was that the fifth defendant (Polymotor Pte Ltd) was not properly represented at the EGM of the plaintiffs (Polybuilding (S",
+          "source_judgment": "[2001] SGHC 95",
+          "source_year": 2001
+        }
+      ],
+      "evidence_digest": "83021187ff1ee81d67badededd604e202f418e5adb464c72635510deb6f6d94f",
+      "generated_answer": {
+        "claims": [
+          {
+            "evidence_id": "E1",
+            "statement": "The case addresses whether articles allowing a written resolution signed by a majority of directors permit such a resolution to be made without notice to minority directors, and whether it is valid or made in good faith.",
+            "supporting_quote": "Articles allowing resolution in writing signed by majority of directors to be valid – Majority of directors signing resolution in writing without notice to minority – Whether good faith exists – Whether notice to minority necessary Whether resolution valid"
+          }
+        ],
+        "explanation": "The passage supports recommending this case for the rule concerning written directors’ resolutions and whether majority-signed resolutions without notice to minority directors are valid. It does not establish whether the described share placement or requisition facts satisfy that rule.",
+        "recommended_case_id": "case:6595",
+        "status": "answered"
+      },
+      "package_digest": "da80ef8975d8aaab493ba0b299fc237dbe42b1a4c3d6c36fc8aa6a01c8b8da71",
+      "package_version": "semantic-judge-package-v1",
+      "query_mode": "facts_principle",
+      "query_text": "My client, the company's largest shareholder, requisitioned an EGM to remove the two executive directors. In response, the other party, using a general share issue mandate, approved a dilutive share placement to third parties that would strip my client of its controlling stake. A resolution in writing signed by a majority of the Directors shall be as effective as a resolution duly passed at a meeting of the Directors and may consist of several documents in the like form, each signed by one or more Directors.",
+      "source_package_id": "404920c168c10748e0258895"
+    }
+  ],
+  "run_signature": "7931cbc002864119547f9320",
+  "schema_version": 1,
+  "selected_package_ids": [
+    "55b464702f081a3ff6d688fb",
+    "266a3190b2ba1df079c15645",
+    "615689094ac2690f02642f7d",
+    "7cfe4dcc0cc44a18b4f6a498",
+    "a35f9a4b139ba3a67608dcee",
+    "4a485ec6ed04a9358fa9b711",
+    "88f23f608864cf5f1372a038",
+    "404920c168c10748e0258895"
+  ],
+  "settings": {
+    "allow_paid_tier": false,
+    "automatic_fallback": false,
+    "automatic_retries": 0,
+    "billing_tier": "free",
+    "data_classification": "public_or_licensed_evaluation_only",
+    "expected_output_tokens": 220,
+    "fallback_model": "gemini-3.5-flash",
+    "free_tier_content_may_improve_google_products": true,
+    "input_usd_per_million": 0.0,
+    "max_output_tokens": 1800,
+    "model": "gemini-3.5-flash",
+    "output_usd_per_million": 0.0,
+    "pricing_snapshot_date": "2026-08-27",
+    "provider": "google_gemini_interactions",
+    "thinking_level": "medium",
+    "timeout_seconds": 60.0
+  },
+  "source_package_artifact_digest": "a7768ccb7959189a29a394dc3e611bbd9e3c8dc7053610f96151672c741f2e77",
+  "source_run_signature": "3664b44b7d4dbe620225d598",
+  "token_cost_estimate": {
+    "ceiling_cost_usd": 0.0,
+    "expected_cost_usd": 0.0,
+    "expected_output_tokens": 1760,
+    "input_tokens": 17610,
+    "input_tokens_per_request": {
+      "max": 2982,
+      "mean": 2201.25,
+      "min": 1545
+    },
+    "maximum_output_tokens": 14400,
+    "method": "conservative local UTF-8 bytes/4 estimate; provider accounting may differ",
+    "pricing_snapshot_date": "2026-08-27",
+    "pricing_usd_per_million": {
+      "input": 0.0,
+      "output": 0.0
+    },
+    "requests": 8
+  }
+}
