@@ -1,0 +1,27 @@
+[evaluation]
+k_values = [1, 5, 10, 20]
+score_batch_size = 64
+
+[models.minilm]
+model_id = "sentence-transformers/all-MiniLM-L6-v2"
+revision = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+dimensions = 384
+encode_batch_size = 128
+query_prefix = ""
+license = "Apache-2.0"
+
+[models.bge_small]
+model_id = "BAAI/bge-small-en-v1.5"
+revision = "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a"
+dimensions = 384
+encode_batch_size = 128
+query_prefix = "Represent this sentence for searching relevant passages: "
+license = "MIT"
+
+[models.mpnet]
+model_id = "sentence-transformers/all-mpnet-base-v2"
+revision = "e8c3b32edf5434bc2275fc9bab85f82640a19130"
+dimensions = 768
+encode_batch_size = 64
+query_prefix = ""
+license = "Apache-2.0"

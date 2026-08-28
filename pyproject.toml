@@ -9,12 +9,18 @@ description = "Reproducible evaluation of Singapore legal citation retrieval and
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-dependencies = []
+dependencies = [
+  "numpy>=2.0,<3",
+]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",
   "ruff>=0.9",
+]
+dense = [
+  "sentence-transformers>=5.1,<6",
+  "torch>=2.6,<3",
 ]
 
 [project.scripts]
@@ -23,6 +29,7 @@ sg-legal-validate = "sg_legal_rag.ingestion.validation:main"
 sg-legal-validate-benchmark = "sg_legal_rag.ingestion.benchmark_validation:main"
 sg-legal-split = "sg_legal_rag.ingestion.splits:main"
 sg-legal-bm25 = "sg_legal_rag.retrieval.benchmark:main"
+sg-legal-dense = "sg_legal_rag.retrieval.dense_benchmark:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sg_legal_rag"]
@@ -34,3 +41,11 @@ addopts = "-q"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
