@@ -31,6 +31,7 @@ sg-legal-split = "sg_legal_rag.ingestion.splits:main"
 sg-legal-bm25 = "sg_legal_rag.retrieval.benchmark:main"
 sg-legal-dense = "sg_legal_rag.retrieval.dense_benchmark:main"
 sg-legal-hybrid = "sg_legal_rag.retrieval.hybrid_benchmark:main"
+sg-legal-rerank = "sg_legal_rag.retrieval.reranker_benchmark:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sg_legal_rag"]

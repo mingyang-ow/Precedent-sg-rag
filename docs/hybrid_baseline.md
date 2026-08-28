@@ -104,8 +104,9 @@ latency.
 6. The best hybrid full-corpus Recall@10 is still below 1.5%. Reranking cannot recover a relevant
    case that is missing from the hybrid candidate union.
 
-The next scoped experiment is reranking the frozen hybrid candidate list. It should report both
-candidate recall and reranked quality so a cross-encoder is not credited for upstream misses.
+The subsequent [reranking experiment](reranker_baseline.md) freezes this candidate generator and
+reports both candidate recall and reranked quality so the cross-encoder is not credited for
+upstream misses.
 
 ## Reproduction
 

@@ -101,6 +101,8 @@ def fuse_rankings(
     dense_ranking: Ranking,
     relevant_indices: set[int],
     config: HybridConfig,
+    *,
+    top_k: int | None = None,
 ) -> Ranking:
     return weighted_reciprocal_rank_fusion(
         (
@@ -109,7 +111,7 @@ def fuse_rankings(
         ),
         relevant_indices,
         rank_constant=config.rank_constant,
-        top_k=max(config.k_values),
+        top_k=max(config.k_values) if top_k is None else top_k,
     )
 
 
