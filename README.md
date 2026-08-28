@@ -83,6 +83,29 @@ The explicit build is slower than loading because it verifies, constructs, seria
 self-validates the bundle. Repeated builds produced the same manifest digest; requests never rebuild
 the corpus or index. See [deployment and artifact measurements](docs/deployment.md).
 
+## Running demo
+
+### Typed FastAPI surface
+
+![FastAPI Swagger UI showing the typed Precedent health, readiness, version, retrieval, answer, and metrics endpoints](docs/assets/api-openapi.png)
+
+*The real local OpenAPI surface exposes bounded request and response contracts across the service.*
+
+### Grounded retrieval
+
+![Swagger UI showing a successful local POST retrieval request with one ranked, provenance-bearing evidence result](docs/assets/retrieval-demo.png)
+
+*A retrieval-only request returns application-owned evidence and source provenance without a model
+provider call.*
+
+### Operational telemetry
+
+![Grafana Precedent RAG Operations dashboard showing local request traffic, retrieval latency, authentication failures, and dependency readiness](docs/assets/grafana-overview.png)
+
+*This local demonstration renders the repository's committed Grafana dashboard against genuine
+Prometheus metrics. It is not a claim of continuously deployed monitoring infrastructure; empty
+answer, token, cost, and provider panels reflect the retrieval-only run.*
+
 ## Grounded citation design
 
 The production contract deliberately separates model judgment from source authority:

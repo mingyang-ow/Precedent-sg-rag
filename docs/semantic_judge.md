@@ -23,10 +23,12 @@ generator -> deterministic checks      frozen historical answer
 
 ## Provider choice
 
-The primary candidate is Google Gemini `gemini-3.7-flash`, while the generator is OpenAI
-`gpt-5.6-luna`. This provides provider and model-family separation. Google documents the selected
-model as a stable generally available model with structured output, thinking levels, and a
-1,048,576-token input context; the pilot needs only a small fraction of that context. See the
+The calibration evaluated Google Gemini models while the generator was OpenAI `gpt-5.6-luna`,
+providing provider and model-family separation. `gemini-3.7-flash` was the initial candidate, but
+the completed final pilot used `gemini-3.5-flash` after separately approved, preserved 3.7 attempts
+could not complete on the existing Free Tier project. Google documents 3.7 as a stable generally
+available model with structured output, thinking levels, and a 1,048,576-token input context; the
+pilot needed only a small fraction of that context. See the
 [Gemini 3.7 Flash model card](https://ai.google.dev/gemini-api/docs/models/gemini-3.7-flash),
 [latest-model guide](https://ai.google.dev/gemini-api/docs/latest-model), and
 [structured-output guide](https://ai.google.dev/gemini-api/docs/structured-output).
@@ -39,16 +41,16 @@ reviewer metadata must never enter the provider payload. Do not enable Google Cl
 paid Gemini plan for this project. See the [official pricing and data-use table](https://ai.google.dev/gemini-api/docs/pricing)
 and [billing guide](https://ai.google.dev/gemini-api/docs/billing).
 
-The non-automatic fallback is Free Tier `gemini-3.5-flash`, which Google also lists as stable with
-structured outputs. If 3.7 is inaccessible, stop the frozen run. Trying 3.5 requires a new model
-configuration, run signature, and explicit approval; it is not an automatic retry. If neither model
-is accessible on the existing Free Tier project, stop rather than enabling billing. See the
+Free Tier `gemini-3.5-flash`, which Google also lists as stable with structured outputs, was invoked
+only in a fresh explicitly approved run. It was not an automatic fallback: the 3.7 results remained
+preserved, and the model/settings change produced a new run signature. Enabling billing was never
+authorized. See the
 [Gemini 3.5 Flash model card](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash).
 
 The adapter uses the provider's current Interactions HTTP API behind a small
 `SemanticJudgeProvider` protocol. It sends one stateless `store=false` request per whole answer,
-provides no tools, stores no application secret in artifacts, applies a 30-second timeout, and
-performs zero automatic retries or fallbacks. `GEMINI_API_KEY` must be separate from
+provides no tools, stores no application secret in artifacts, and performs zero automatic retries
+or fallbacks. The final 3.5 pilot used a 60-second timeout. `GEMINI_API_KEY` must be separate from
 `OPENAI_API_KEY`, `PRECEDENT_API_KEY`, and `PRECEDENT_METRICS_KEY`.
 
 ## Clean-room input and prompt isolation
@@ -84,9 +86,11 @@ The output has one record verdict and an ordered verdict for every generated cla
 `supported`, `unsupported`, or `uncertain`. Each claim decision contains its zero-based claim index,
 one or more visible evidence IDs, and a short reason; the record includes a bounded summary reason.
 Extra fields, missing/reordered claims, arbitrary evidence IDs, malformed JSON, and explanations
-beyond the schema bounds are rejected. Provider failure or malformed output is
-never `unsupported`. Transport, HTTP, or non-completed provider interactions are
-`judge_unavailable`; the failed record is persisted and the run stops before the next call.
+beyond the schema bounds are rejected. Provider failure or malformed output is never
+`unsupported`. Transport, HTTP, or model-availability failures are `judge_unavailable`; a provider
+interaction that returns incomplete with partial output is
+`provider_incomplete`. Either operational failure persists the failed record and stops the run
+before the next call.
 Syntactically or structurally malformed decisions are `malformed_output`, remain distinct from
 availability, and do not trigger fallback or fail-fast. Supported, unsupported, uncertain, and
 reference disagreements are normal semantic outcomes and continue through the frozen record order.
@@ -119,11 +123,11 @@ They are synthetic calibration fixtures and say nothing about production prevale
 
 Result artifacts report raw counts with record- and claim-level agreement, supported precision and
 recall, unsupported detection, and uncertain rate. Reference-uncertain examples are excluded from
-binary denominators. Every disagreement is preserved as `pending_manual_review`; after a live pilot,
-each must be manually classified before Phase 7.6 can be called complete. The sample is too small for
-statistical or leaderboard claims.
+binary denominators. Every disagreement remains preserved as `pending_manual_review` in the frozen
+result artifact; the completed project review interprets those disagreements below without mutating
+the artifact. The sample is too small for statistical or leaderboard claims.
 
-## Offline workflow and Free Tier gate
+## Offline workflow, Free Tier gate, and final calibration
 
 Preparation validates the original behavioral manifest, evidence locks, generation prompt and
 settings, and every cached response before projecting the eight answered records. Preparation never
@@ -134,27 +138,28 @@ uv run sg-legal-semantic-judge --prepare
 uv run sg-legal-semantic-judge --preflight
 ```
 
-The committed Free Tier pilot has run signature `cc5a3538e92350348ddf1847`. Live execution requires
-the separate secret, an exact signature confirmation, explicit confirmation that the key belongs
-to a non-billing-enabled project, and a separate approval:
+The final approved Free Tier calibration is preserved in the
+[Gemini 3.5 result artifact](../experiments/results/semantic_judge_pilot_gemini_3_5_1800_60s.json)
+under run signature `7931cbc002864119547f9320`. Four records returned valid verdicts. The fifth
+interaction returned an incomplete provider result with partial output, was persisted as
+`provider_incomplete`, and stopped the run before the final three records; the run status is
+`stopped_provider_incomplete`.
 
-```bash
-GEMINI_API_KEY='...' uv run sg-legal-semantic-judge --execute \
-  --confirm-run-signature cc5a3538e92350348ddf1847 \
-  --confirm-free-tier
-```
+On the four evaluated records, agreement was **50%** (two of four). The judge labeled all four
+`supported`, including both reference-unsupported records. The seven reached proposition claims
+were all reference-supported and all agreed, for **100% claim agreement** on that limited subset;
+no unsupported reference claim was reached at claim level. Manual disagreement review therefore
+found useful narrow claim-grounding signal, but also supported-label bias and weak discrimination
+of whole-answer relevance and recommended-authority defects. The judge remains a diagnostic shadow
+QA signal, not ground truth or a production trust boundary.
 
-Do not run that command without separate live-inference approval. Integrity, reference, and signature
-checks finish before provider construction. Per-record results are cached, including operational
-failures, so a restart does not silently retry calls. Judge observability stays in the offline
-result artifact—request counts, failures, durations, verdicts, tokens, and cost—rather than adding
-Prometheus surface to the production service. No query, evidence, or rationale becomes a metric
-label.
-
-The result artifact reports `completed`, `completed_with_malformed_outputs`, or
-`stopped_judge_unavailable`. A cached `judge_unavailable` record also stops a resumed run without a
-new provider call; earlier cached successes are not reissued. Records after the stop point are
-reported as `not_attempted`, not mislabeled as unavailable.
+Integrity, reference, and signature checks finish before provider construction. Per-record results
+are cached, including operational failures, so a restart does not silently retry calls. Result
+artifacts distinguish `completed`, `completed_with_malformed_outputs`,
+`stopped_judge_unavailable`, and `stopped_provider_incomplete`. Cached operational failures stop a
+resumed run without a new provider call, earlier cached successes are not reissued, and later
+records remain `not_attempted`. Judge observability stays in the offline artifact rather than the
+production Prometheus surface; no query, evidence, or rationale becomes a metric label.
 
 ## Future shadow mode and residual risk
 
