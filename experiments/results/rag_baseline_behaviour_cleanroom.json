@@ -1,0 +1,1011 @@
+{
+  "aggregates": {
+    "by_condition": {
+      "oracle_gold_context": {
+        "abstention_layers": {
+          "5_insufficient_evidence_correct_abstention": 1
+        },
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "answer_rate": 0.5,
+        "behaviour": {
+          "abstention_recall": 1.0,
+          "answer_recall": 1.0,
+          "balanced_accuracy": 1.0,
+          "citation_completeness": 1.0,
+          "citation_correctness": 1.0,
+          "citation_validity": 1.0,
+          "confusion_matrix": {
+            "false_negative_abstention": 0,
+            "false_positive_answer": 0,
+            "true_negative_abstention": 1,
+            "true_positive_answer": 1
+          },
+          "evaluable_records": 2,
+          "excluded_provider_api_failures": 0,
+          "excluded_structured_output_failures": 0,
+          "excluded_unknown_ground_truth": 0,
+          "false_abstention_rate": 0.0,
+          "false_answer_rate": 0.0,
+          "unsupported_claim_rate": 0.0
+        },
+        "citation_completeness": 1.0,
+        "citation_correctness": 1.0,
+        "estimated_cost_usd": 0.0007088,
+        "evaluable_records": 2,
+        "evaluation_statuses": {
+          "abstained": 1,
+          "answered": 1
+        },
+        "expected_actions": {
+          "abstain": 1,
+          "answer": 1
+        },
+        "faithfulness_proxy": 1.0,
+        "grounded_end_to_end_success": null,
+        "grounded_generation_success": 1.0,
+        "inappropriate_answer_rate": 0.0,
+        "latency_ms": {
+          "mean": 3355.8455415004573,
+          "p50": 3355.8455415004573,
+          "p95": 3823.9013887498004
+        },
+        "manual_sufficiency_review_records": 0,
+        "precedent_correctness": 1.0,
+        "primary_failure_layers": {
+          "1_target_present_generation_correct": 1,
+          "5_insufficient_evidence_correct_abstention": 1
+        },
+        "provider_api_failures": 0,
+        "provider_success_rate": 1.0,
+        "records": 2,
+        "retrieval_generation_layers": {
+          "1_target_present_generation_correct": 1
+        },
+        "structured_output_failures": 0,
+        "target_present_records": 2,
+        "tokens": {
+          "cached_input": 0,
+          "input": 2314,
+          "output": 205,
+          "reasoning": 0,
+          "total": 2519
+        },
+        "unsupported_claim_rate_proxy": 0.0
+      },
+      "retrieved_context": {
+        "abstention_layers": {
+          "5_insufficient_evidence_correct_abstention": 1,
+          "6_insufficient_evidence_inappropriate_answer": 1
+        },
+        "abstention_precision": 0.3333333333333333,
+        "abstention_recall": 0.5,
+        "answer_rate": 0.7,
+        "behaviour": {
+          "abstention_recall": 0.5,
+          "answer_recall": 0.75,
+          "balanced_accuracy": 0.625,
+          "citation_completeness": 1.0,
+          "citation_correctness": 0.35714285714285715,
+          "citation_validity": 0.2857142857142857,
+          "confusion_matrix": {
+            "false_negative_abstention": 2,
+            "false_positive_answer": 1,
+            "true_negative_abstention": 1,
+            "true_positive_answer": 6
+          },
+          "evaluable_records": 10,
+          "excluded_provider_api_failures": 0,
+          "excluded_structured_output_failures": 0,
+          "excluded_unknown_ground_truth": 0,
+          "false_abstention_rate": 0.25,
+          "false_answer_rate": 0.5,
+          "unsupported_claim_rate": 0.6428571428571429
+        },
+        "citation_completeness": 1.0,
+        "citation_correctness": 0.35714285714285715,
+        "estimated_cost_usd": 0.0056446,
+        "evaluable_records": 10,
+        "evaluation_statuses": {
+          "abstained": 3,
+          "answered": 7
+        },
+        "expected_actions": {
+          "abstain": 2,
+          "answer": 8
+        },
+        "faithfulness_proxy": 0.35714285714285715,
+        "grounded_end_to_end_success": 0.0,
+        "grounded_generation_success": 0.0,
+        "inappropriate_answer_rate": 0.5,
+        "latency_ms": {
+          "mean": 2668.4723739999754,
+          "p50": 2646.199778499067,
+          "p95": 3983.844044350189
+        },
+        "manual_sufficiency_review_records": 0,
+        "precedent_correctness": 0.0,
+        "primary_failure_layers": {
+          "3_target_absent_generation_grounded_to_supplied_evidence": 1,
+          "4_target_absent_generation_unsupported": 7,
+          "5_insufficient_evidence_correct_abstention": 1,
+          "6_insufficient_evidence_inappropriate_answer": 1
+        },
+        "provider_api_failures": 0,
+        "provider_success_rate": 1.0,
+        "records": 10,
+        "retrieval_generation_layers": {
+          "3_target_absent_generation_grounded_to_supplied_evidence": 1,
+          "4_target_absent_generation_unsupported": 5
+        },
+        "structured_output_failures": 0,
+        "target_present_records": 0,
+        "tokens": {
+          "cached_input": 0,
+          "input": 18227,
+          "output": 1666,
+          "reasoning": 0,
+          "total": 19893
+        },
+        "unsupported_claim_rate_proxy": 0.6428571428571429
+      }
+    },
+    "by_mode": {
+      "facts_only": {
+        "abstention_layers": {
+          "5_insufficient_evidence_correct_abstention": 2,
+          "6_insufficient_evidence_inappropriate_answer": 1
+        },
+        "abstention_precision": 0.6666666666666666,
+        "abstention_recall": 0.6666666666666666,
+        "answer_rate": 0.5,
+        "behaviour": {
+          "abstention_recall": 0.6666666666666666,
+          "answer_recall": 0.6666666666666666,
+          "balanced_accuracy": 0.6666666666666666,
+          "citation_completeness": 1.0,
+          "citation_correctness": 0.5,
+          "citation_validity": 0.3333333333333333,
+          "confusion_matrix": {
+            "false_negative_abstention": 1,
+            "false_positive_answer": 1,
+            "true_negative_abstention": 2,
+            "true_positive_answer": 2
+          },
+          "evaluable_records": 6,
+          "excluded_provider_api_failures": 0,
+          "excluded_structured_output_failures": 0,
+          "excluded_unknown_ground_truth": 0,
+          "false_abstention_rate": 0.3333333333333333,
+          "false_answer_rate": 0.3333333333333333,
+          "unsupported_claim_rate": 0.5
+        },
+        "citation_completeness": 1.0,
+        "citation_correctness": 0.5,
+        "estimated_cost_usd": 0.0030464,
+        "evaluable_records": 6,
+        "evaluation_statuses": {
+          "abstained": 3,
+          "answered": 3
+        },
+        "expected_actions": {
+          "abstain": 3,
+          "answer": 3
+        },
+        "faithfulness_proxy": 0.5,
+        "grounded_end_to_end_success": 0.0,
+        "grounded_generation_success": 0.0,
+        "inappropriate_answer_rate": 0.3333333333333333,
+        "latency_ms": {
+          "mean": 3001.644224166436,
+          "p50": 3153.3201284992174,
+          "p95": 4069.9458330004745
+        },
+        "manual_sufficiency_review_records": 0,
+        "precedent_correctness": 0.0,
+        "primary_failure_layers": {
+          "4_target_absent_generation_unsupported": 3,
+          "5_insufficient_evidence_correct_abstention": 2,
+          "6_insufficient_evidence_inappropriate_answer": 1
+        },
+        "provider_api_failures": 0,
+        "provider_success_rate": 1.0,
+        "records": 6,
+        "retrieval_generation_layers": {
+          "4_target_absent_generation_unsupported": 2
+        },
+        "structured_output_failures": 0,
+        "target_present_records": 1,
+        "tokens": {
+          "cached_input": 0,
+          "input": 10684,
+          "output": 758,
+          "reasoning": 0,
+          "total": 11442
+        },
+        "unsupported_claim_rate_proxy": 0.5
+      },
+      "facts_principle": {
+        "abstention_layers": {},
+        "abstention_precision": 0.0,
+        "abstention_recall": null,
+        "answer_rate": 0.8333333333333334,
+        "behaviour": {
+          "abstention_recall": null,
+          "answer_recall": 0.8333333333333334,
+          "balanced_accuracy": null,
+          "citation_completeness": 1.0,
+          "citation_correctness": 0.4,
+          "citation_validity": 0.4,
+          "confusion_matrix": {
+            "false_negative_abstention": 1,
+            "false_positive_answer": 0,
+            "true_negative_abstention": 0,
+            "true_positive_answer": 5
+          },
+          "evaluable_records": 6,
+          "excluded_provider_api_failures": 0,
+          "excluded_structured_output_failures": 0,
+          "excluded_unknown_ground_truth": 0,
+          "false_abstention_rate": 0.16666666666666666,
+          "false_answer_rate": null,
+          "unsupported_claim_rate": 0.6
+        },
+        "citation_completeness": 1.0,
+        "citation_correctness": 0.4,
+        "estimated_cost_usd": 0.003307,
+        "evaluable_records": 6,
+        "evaluation_statuses": {
+          "abstained": 1,
+          "answered": 5
+        },
+        "expected_actions": {
+          "answer": 6
+        },
+        "faithfulness_proxy": 0.4,
+        "grounded_end_to_end_success": 0.0,
+        "grounded_generation_success": 0.16666666666666666,
+        "inappropriate_answer_rate": null,
+        "latency_ms": {
+          "mean": 2564.4249130003423,
+          "p50": 2810.549349000212,
+          "p95": 3160.249258750355
+        },
+        "manual_sufficiency_review_records": 0,
+        "precedent_correctness": 0.16666666666666666,
+        "primary_failure_layers": {
+          "1_target_present_generation_correct": 1,
+          "3_target_absent_generation_grounded_to_supplied_evidence": 1,
+          "4_target_absent_generation_unsupported": 4
+        },
+        "provider_api_failures": 0,
+        "provider_success_rate": 1.0,
+        "records": 6,
+        "retrieval_generation_layers": {
+          "1_target_present_generation_correct": 1,
+          "3_target_absent_generation_grounded_to_supplied_evidence": 1,
+          "4_target_absent_generation_unsupported": 3
+        },
+        "structured_output_failures": 0,
+        "target_present_records": 1,
+        "tokens": {
+          "cached_input": 0,
+          "input": 9857,
+          "output": 1113,
+          "reasoning": 0,
+          "total": 10970
+        },
+        "unsupported_claim_rate_proxy": 0.6
+      }
+    },
+    "by_top_k": {
+      "1": {
+        "abstention_layers": {},
+        "abstention_precision": 0.0,
+        "abstention_recall": null,
+        "answer_rate": 0.75,
+        "behaviour": {
+          "abstention_recall": null,
+          "answer_recall": 0.75,
+          "balanced_accuracy": null,
+          "citation_completeness": 1.0,
+          "citation_correctness": 0.16666666666666666,
+          "citation_validity": 0.0,
+          "confusion_matrix": {
+            "false_negative_abstention": 1,
+            "false_positive_answer": 0,
+            "true_negative_abstention": 0,
+            "true_positive_answer": 3
+          },
+          "evaluable_records": 4,
+          "excluded_provider_api_failures": 0,
+          "excluded_structured_output_failures": 0,
+          "excluded_unknown_ground_truth": 0,
+          "false_abstention_rate": 0.25,
+          "false_answer_rate": null,
+          "unsupported_claim_rate": 0.8333333333333334
+        },
+        "citation_completeness": 1.0,
+        "citation_correctness": 0.16666666666666666,
+        "estimated_cost_usd": 0.0016527999999999998,
+        "evaluable_records": 4,
+        "evaluation_statuses": {
+          "abstained": 1,
+          "answered": 3
+        },
+        "expected_actions": {
+          "answer": 4
+        },
+        "faithfulness_proxy": 0.16666666666666666,
+        "grounded_end_to_end_success": 0.0,
+        "grounded_generation_success": 0.0,
+        "inappropriate_answer_rate": null,
+        "latency_ms": {
+          "mean": 2462.633164499948,
+          "p50": 2494.7817094998754,
+          "p95": 3605.6851748494405
+        },
+        "manual_sufficiency_review_records": 0,
+        "precedent_correctness": 0.0,
+        "primary_failure_layers": {
+          "4_target_absent_generation_unsupported": 4
+        },
+        "provider_api_failures": 0,
+        "provider_success_rate": 1.0,
+        "records": 4,
+        "retrieval_generation_layers": {
+          "4_target_absent_generation_unsupported": 3
+        },
+        "structured_output_failures": 0,
+        "target_present_records": 0,
+        "tokens": {
+          "cached_input": 0,
+          "input": 4412,
+          "output": 642,
+          "reasoning": 0,
+          "total": 5054
+        },
+        "unsupported_claim_rate_proxy": 0.8333333333333334
+      },
+      "3": {
+        "abstention_layers": {
+          "6_insufficient_evidence_inappropriate_answer": 1
+        },
+        "abstention_precision": 0.0,
+        "abstention_recall": 0.0,
+        "answer_rate": 0.8,
+        "behaviour": {
+          "abstention_recall": 0.0,
+          "answer_recall": 0.75,
+          "balanced_accuracy": 0.375,
+          "citation_completeness": 1.0,
+          "citation_correctness": 0.5,
+          "citation_validity": 0.5,
+          "confusion_matrix": {
+            "false_negative_abstention": 1,
+            "false_positive_answer": 1,
+            "true_negative_abstention": 0,
+            "true_positive_answer": 3
+          },
+          "evaluable_records": 5,
+          "excluded_provider_api_failures": 0,
+          "excluded_structured_output_failures": 0,
+          "excluded_unknown_ground_truth": 0,
+          "false_abstention_rate": 0.25,
+          "false_answer_rate": 1.0,
+          "unsupported_claim_rate": 0.5
+        },
+        "citation_completeness": 1.0,
+        "citation_correctness": 0.5,
+        "estimated_cost_usd": 0.003325,
+        "evaluable_records": 5,
+        "evaluation_statuses": {
+          "abstained": 1,
+          "answered": 4
+        },
+        "expected_actions": {
+          "abstain": 1,
+          "answer": 4
+        },
+        "faithfulness_proxy": 0.5,
+        "grounded_end_to_end_success": 0.0,
+        "grounded_generation_success": 0.0,
+        "inappropriate_answer_rate": 1.0,
+        "latency_ms": {
+          "mean": 3126.6693022000254,
+          "p50": 3011.839050999697,
+          "p95": 3949.644062400693
+        },
+        "manual_sufficiency_review_records": 0,
+        "precedent_correctness": 0.0,
+        "primary_failure_layers": {
+          "3_target_absent_generation_grounded_to_supplied_evidence": 1,
+          "4_target_absent_generation_unsupported": 3,
+          "6_insufficient_evidence_inappropriate_answer": 1
+        },
+        "provider_api_failures": 0,
+        "provider_success_rate": 1.0,
+        "records": 5,
+        "retrieval_generation_layers": {
+          "3_target_absent_generation_grounded_to_supplied_evidence": 1,
+          "4_target_absent_generation_unsupported": 2
+        },
+        "structured_output_failures": 0,
+        "target_present_records": 0,
+        "tokens": {
+          "cached_input": 0,
+          "input": 10775,
+          "output": 975,
+          "reasoning": 0,
+          "total": 11750
+        },
+        "unsupported_claim_rate_proxy": 0.5
+      },
+      "5": {
+        "abstention_layers": {
+          "5_insufficient_evidence_correct_abstention": 1
+        },
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "answer_rate": 0.0,
+        "behaviour": {
+          "abstention_recall": 1.0,
+          "answer_recall": null,
+          "balanced_accuracy": null,
+          "citation_completeness": null,
+          "citation_correctness": null,
+          "citation_validity": null,
+          "confusion_matrix": {
+            "false_negative_abstention": 0,
+            "false_positive_answer": 0,
+            "true_negative_abstention": 1,
+            "true_positive_answer": 0
+          },
+          "evaluable_records": 1,
+          "excluded_provider_api_failures": 0,
+          "excluded_structured_output_failures": 0,
+          "excluded_unknown_ground_truth": 0,
+          "false_abstention_rate": null,
+          "false_answer_rate": 0.0,
+          "unsupported_claim_rate": null
+        },
+        "citation_completeness": null,
+        "citation_correctness": null,
+        "estimated_cost_usd": 0.0006667999999999999,
+        "evaluable_records": 1,
+        "evaluation_statuses": {
+          "abstained": 1
+        },
+        "expected_actions": {
+          "abstain": 1
+        },
+        "faithfulness_proxy": null,
+        "grounded_end_to_end_success": null,
+        "grounded_generation_success": null,
+        "inappropriate_answer_rate": 0.0,
+        "latency_ms": {
+          "mean": 1200.844570999834,
+          "p50": 1200.844570999834,
+          "p95": 1200.844570999834
+        },
+        "manual_sufficiency_review_records": 0,
+        "precedent_correctness": null,
+        "primary_failure_layers": {
+          "5_insufficient_evidence_correct_abstention": 1
+        },
+        "provider_api_failures": 0,
+        "provider_success_rate": 1.0,
+        "records": 1,
+        "retrieval_generation_layers": {},
+        "structured_output_failures": 0,
+        "target_present_records": 0,
+        "tokens": {
+          "cached_input": 0,
+          "input": 3040,
+          "output": 49,
+          "reasoning": 0,
+          "total": 3089
+        },
+        "unsupported_claim_rate_proxy": null
+      },
+      "oracle": {
+        "abstention_layers": {
+          "5_insufficient_evidence_correct_abstention": 1
+        },
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "answer_rate": 0.5,
+        "behaviour": {
+          "abstention_recall": 1.0,
+          "answer_recall": 1.0,
+          "balanced_accuracy": 1.0,
+          "citation_completeness": 1.0,
+          "citation_correctness": 1.0,
+          "citation_validity": 1.0,
+          "confusion_matrix": {
+            "false_negative_abstention": 0,
+            "false_positive_answer": 0,
+            "true_negative_abstention": 1,
+            "true_positive_answer": 1
+          },
+          "evaluable_records": 2,
+          "excluded_provider_api_failures": 0,
+          "excluded_structured_output_failures": 0,
+          "excluded_unknown_ground_truth": 0,
+          "false_abstention_rate": 0.0,
+          "false_answer_rate": 0.0,
+          "unsupported_claim_rate": 0.0
+        },
+        "citation_completeness": 1.0,
+        "citation_correctness": 1.0,
+        "estimated_cost_usd": 0.0007088,
+        "evaluable_records": 2,
+        "evaluation_statuses": {
+          "abstained": 1,
+          "answered": 1
+        },
+        "expected_actions": {
+          "abstain": 1,
+          "answer": 1
+        },
+        "faithfulness_proxy": 1.0,
+        "grounded_end_to_end_success": null,
+        "grounded_generation_success": 1.0,
+        "inappropriate_answer_rate": 0.0,
+        "latency_ms": {
+          "mean": 3355.8455415004573,
+          "p50": 3355.8455415004573,
+          "p95": 3823.9013887498004
+        },
+        "manual_sufficiency_review_records": 0,
+        "precedent_correctness": 1.0,
+        "primary_failure_layers": {
+          "1_target_present_generation_correct": 1,
+          "5_insufficient_evidence_correct_abstention": 1
+        },
+        "provider_api_failures": 0,
+        "provider_success_rate": 1.0,
+        "records": 2,
+        "retrieval_generation_layers": {
+          "1_target_present_generation_correct": 1
+        },
+        "structured_output_failures": 0,
+        "target_present_records": 2,
+        "tokens": {
+          "cached_input": 0,
+          "input": 2314,
+          "output": 205,
+          "reasoning": 0,
+          "total": 2519
+        },
+        "unsupported_claim_rate_proxy": 0.0
+      }
+    },
+    "by_warm_cold": {
+      "cold": {
+        "abstention_layers": {
+          "5_insufficient_evidence_correct_abstention": 1
+        },
+        "abstention_precision": 0.3333333333333333,
+        "abstention_recall": 1.0,
+        "answer_rate": 0.25,
+        "behaviour": {
+          "abstention_recall": 1.0,
+          "answer_recall": 0.3333333333333333,
+          "balanced_accuracy": 0.6666666666666666,
+          "citation_completeness": 1.0,
+          "citation_correctness": 1.0,
+          "citation_validity": 1.0,
+          "confusion_matrix": {
+            "false_negative_abstention": 2,
+            "false_positive_answer": 0,
+            "true_negative_abstention": 1,
+            "true_positive_answer": 1
+          },
+          "evaluable_records": 4,
+          "excluded_provider_api_failures": 0,
+          "excluded_structured_output_failures": 0,
+          "excluded_unknown_ground_truth": 0,
+          "false_abstention_rate": 0.6666666666666666,
+          "false_answer_rate": 0.0,
+          "unsupported_claim_rate": 0.0
+        },
+        "citation_completeness": 1.0,
+        "citation_correctness": 1.0,
+        "estimated_cost_usd": 0.0021295999999999997,
+        "evaluable_records": 4,
+        "evaluation_statuses": {
+          "abstained": 3,
+          "answered": 1
+        },
+        "expected_actions": {
+          "abstain": 1,
+          "answer": 3
+        },
+        "faithfulness_proxy": 1.0,
+        "grounded_end_to_end_success": 0.0,
+        "grounded_generation_success": 0.0,
+        "inappropriate_answer_rate": 0.0,
+        "latency_ms": {
+          "mean": 2295.549589000075,
+          "p50": 1993.0798899995352,
+          "p95": 3932.2287404505
+        },
+        "manual_sufficiency_review_records": 0,
+        "precedent_correctness": 0.0,
+        "primary_failure_layers": {
+          "3_target_absent_generation_grounded_to_supplied_evidence": 1,
+          "4_target_absent_generation_unsupported": 2,
+          "5_insufficient_evidence_correct_abstention": 1
+        },
+        "provider_api_failures": 0,
+        "provider_success_rate": 1.0,
+        "records": 4,
+        "retrieval_generation_layers": {
+          "3_target_absent_generation_grounded_to_supplied_evidence": 1
+        },
+        "structured_output_failures": 0,
+        "target_present_records": 0,
+        "tokens": {
+          "cached_input": 0,
+          "input": 8374,
+          "output": 379,
+          "reasoning": 0,
+          "total": 8753
+        },
+        "unsupported_claim_rate_proxy": 0.0
+      },
+      "warm": {
+        "abstention_layers": {
+          "5_insufficient_evidence_correct_abstention": 1,
+          "6_insufficient_evidence_inappropriate_answer": 1
+        },
+        "abstention_precision": 1.0,
+        "abstention_recall": 0.5,
+        "answer_rate": 0.875,
+        "behaviour": {
+          "abstention_recall": 0.5,
+          "answer_recall": 1.0,
+          "balanced_accuracy": 0.75,
+          "citation_completeness": 1.0,
+          "citation_correctness": 0.35714285714285715,
+          "citation_validity": 0.2857142857142857,
+          "confusion_matrix": {
+            "false_negative_abstention": 0,
+            "false_positive_answer": 1,
+            "true_negative_abstention": 1,
+            "true_positive_answer": 6
+          },
+          "evaluable_records": 8,
+          "excluded_provider_api_failures": 0,
+          "excluded_structured_output_failures": 0,
+          "excluded_unknown_ground_truth": 0,
+          "false_abstention_rate": 0.0,
+          "false_answer_rate": 0.5,
+          "unsupported_claim_rate": 0.6428571428571429
+        },
+        "citation_completeness": 1.0,
+        "citation_correctness": 0.35714285714285715,
+        "estimated_cost_usd": 0.0042238,
+        "evaluable_records": 8,
+        "evaluation_statuses": {
+          "abstained": 1,
+          "answered": 7
+        },
+        "expected_actions": {
+          "abstain": 2,
+          "answer": 6
+        },
+        "faithfulness_proxy": 0.35714285714285715,
+        "grounded_end_to_end_success": 0.0,
+        "grounded_generation_success": 0.16666666666666666,
+        "inappropriate_answer_rate": 0.5,
+        "latency_ms": {
+          "mean": 3026.777058375046,
+          "p50": 2923.811270000442,
+          "p95": 3849.1845042496607
+        },
+        "manual_sufficiency_review_records": 0,
+        "precedent_correctness": 0.16666666666666666,
+        "primary_failure_layers": {
+          "1_target_present_generation_correct": 1,
+          "4_target_absent_generation_unsupported": 5,
+          "5_insufficient_evidence_correct_abstention": 1,
+          "6_insufficient_evidence_inappropriate_answer": 1
+        },
+        "provider_api_failures": 0,
+        "provider_success_rate": 1.0,
+        "records": 8,
+        "retrieval_generation_layers": {
+          "1_target_present_generation_correct": 1,
+          "4_target_absent_generation_unsupported": 5
+        },
+        "structured_output_failures": 0,
+        "target_present_records": 2,
+        "tokens": {
+          "cached_input": 0,
+          "input": 12167,
+          "output": 1492,
+          "reasoning": 0,
+          "total": 13659
+        },
+        "unsupported_claim_rate_proxy": 0.6428571428571429
+      }
+    },
+    "overall": {
+      "abstention_layers": {
+        "5_insufficient_evidence_correct_abstention": 2,
+        "6_insufficient_evidence_inappropriate_answer": 1
+      },
+      "abstention_precision": 0.5,
+      "abstention_recall": 0.6666666666666666,
+      "answer_rate": 0.6666666666666666,
+      "behaviour": {
+        "abstention_recall": 0.6666666666666666,
+        "answer_recall": 0.7777777777777778,
+        "balanced_accuracy": 0.7222222222222222,
+        "citation_completeness": 1.0,
+        "citation_correctness": 0.4375,
+        "citation_validity": 0.375,
+        "confusion_matrix": {
+          "false_negative_abstention": 2,
+          "false_positive_answer": 1,
+          "true_negative_abstention": 2,
+          "true_positive_answer": 7
+        },
+        "evaluable_records": 12,
+        "excluded_provider_api_failures": 0,
+        "excluded_structured_output_failures": 0,
+        "excluded_unknown_ground_truth": 0,
+        "false_abstention_rate": 0.2222222222222222,
+        "false_answer_rate": 0.3333333333333333,
+        "unsupported_claim_rate": 0.5625
+      },
+      "citation_completeness": 1.0,
+      "citation_correctness": 0.4375,
+      "estimated_cost_usd": 0.0063533999999999995,
+      "evaluable_records": 12,
+      "evaluation_statuses": {
+        "abstained": 4,
+        "answered": 8
+      },
+      "expected_actions": {
+        "abstain": 3,
+        "answer": 9
+      },
+      "faithfulness_proxy": 0.4375,
+      "grounded_end_to_end_success": 0.0,
+      "grounded_generation_success": 0.1111111111111111,
+      "inappropriate_answer_rate": 0.3333333333333333,
+      "latency_ms": {
+        "mean": 2783.034568583389,
+        "p50": 2810.549349000212,
+        "p95": 3992.3305374001757
+      },
+      "manual_sufficiency_review_records": 0,
+      "precedent_correctness": 0.1111111111111111,
+      "primary_failure_layers": {
+        "1_target_present_generation_correct": 1,
+        "3_target_absent_generation_grounded_to_supplied_evidence": 1,
+        "4_target_absent_generation_unsupported": 7,
+        "5_insufficient_evidence_correct_abstention": 2,
+        "6_insufficient_evidence_inappropriate_answer": 1
+      },
+      "provider_api_failures": 0,
+      "provider_success_rate": 1.0,
+      "records": 12,
+      "retrieval_generation_layers": {
+        "1_target_present_generation_correct": 1,
+        "3_target_absent_generation_grounded_to_supplied_evidence": 1,
+        "4_target_absent_generation_unsupported": 5
+      },
+      "structured_output_failures": 0,
+      "target_present_records": 2,
+      "tokens": {
+        "cached_input": 0,
+        "input": 20541,
+        "output": 1871,
+        "reasoning": 0,
+        "total": 22412
+      },
+      "unsupported_claim_rate_proxy": 0.5625
+    }
+  },
+  "binary_records": 12,
+  "changed_labels": [
+    {
+      "cleanroom": "abstain",
+      "cleanroom_rationale": "The passage gives procedural history involving a different condemned prisoner and briefly notes that wilful blindness was irrelevant because his conviction rested on actual knowledge, but it supplies no holding or sufficiently developed rule that supports a defensible recommendation for the queried last-minute situation.",
+      "original": "answer",
+      "package_id": "8c13b526e62500c845aa95b9"
+    },
+    {
+      "cleanroom": "answer",
+      "cleanroom_rationale": "E1 states the Said v Butt principle exempting directors from personal liability for their company's contractual breaches when they act as directors and do not breach personal duties. That rule is directly relevant to the attempt to impose personal liability, though its application to the client's director remains unresolved.",
+      "original": "abstain",
+      "package_id": "266a3190b2ba1df079c15645"
+    },
+    {
+      "cleanroom": "answer",
+      "cleanroom_rationale": "E1 expressly recognizes inherent jurisdiction to correct or clarify orders and a broad power to make incidental or consequential orders needed to give effect to relief, while limiting that power against substantive correction or variation of perfected orders. This directly supports the procedural principle, but not whether the proposed oppression relief stays within that boundary.",
+      "original": "abstain",
+      "package_id": "d79a3b3b0a0b1ee71b2f4e91"
+    },
+    {
+      "cleanroom": "answer",
+      "cleanroom_rationale": "E1 identifies an authority addressing articles that validate majority-signed written directors' resolutions, including whether notice to the minority and good faith are required. E3 reproduces a materially matching article and discusses the absence of formal resolutions. These passages support relevant authority on the stated written-resolution principle, though they do not decide the propriety of the dilutive placement.",
+      "original": "abstain",
+      "package_id": "88f23f608864cf5f1372a038"
+    },
+    {
+      "cleanroom": "answer",
+      "cleanroom_rationale": "E1 identifies a case addressing articles under which a written resolution signed by a majority of directors is valid, and specifically flags good faith and notice to the minority as issues. It is relevant authority for the stated resolution principle, although the passage does not establish whether the dilutive share placement was valid.",
+      "original": "abstain",
+      "package_id": "404920c168c10748e0258895"
+    }
+  ],
+  "cleanroom_adjudication_digest": "f3915f8202a56f687cc85655290532d36da6603c7c636e57b8500a90845eb6db",
+  "difficulty": {
+    "clear_binary": {
+      "abstention_layers": {
+        "5_insufficient_evidence_correct_abstention": 2,
+        "6_insufficient_evidence_inappropriate_answer": 1
+      },
+      "abstention_precision": 0.5,
+      "abstention_recall": 0.6666666666666666,
+      "answer_rate": 0.6666666666666666,
+      "behaviour": {
+        "abstention_recall": 0.6666666666666666,
+        "answer_recall": 0.7777777777777778,
+        "balanced_accuracy": 0.7222222222222222,
+        "citation_completeness": 1.0,
+        "citation_correctness": 0.4375,
+        "citation_validity": 0.375,
+        "confusion_matrix": {
+          "false_negative_abstention": 2,
+          "false_positive_answer": 1,
+          "true_negative_abstention": 2,
+          "true_positive_answer": 7
+        },
+        "evaluable_records": 12,
+        "excluded_provider_api_failures": 0,
+        "excluded_structured_output_failures": 0,
+        "excluded_unknown_ground_truth": 0,
+        "false_abstention_rate": 0.2222222222222222,
+        "false_answer_rate": 0.3333333333333333,
+        "unsupported_claim_rate": 0.5625
+      },
+      "citation_completeness": 1.0,
+      "citation_correctness": 0.4375,
+      "estimated_cost_usd": 0.0063533999999999995,
+      "evaluable_records": 12,
+      "evaluation_statuses": {
+        "abstained": 4,
+        "answered": 8
+      },
+      "expected_actions": {
+        "abstain": 3,
+        "answer": 9
+      },
+      "faithfulness_proxy": 0.4375,
+      "grounded_end_to_end_success": 0.0,
+      "grounded_generation_success": 0.1111111111111111,
+      "inappropriate_answer_rate": 0.3333333333333333,
+      "latency_ms": {
+        "mean": 2783.034568583389,
+        "p50": 2810.549349000212,
+        "p95": 3992.3305374001757
+      },
+      "manual_sufficiency_review_records": 0,
+      "precedent_correctness": 0.1111111111111111,
+      "primary_failure_layers": {
+        "1_target_present_generation_correct": 1,
+        "3_target_absent_generation_grounded_to_supplied_evidence": 1,
+        "4_target_absent_generation_unsupported": 7,
+        "5_insufficient_evidence_correct_abstention": 2,
+        "6_insufficient_evidence_inappropriate_answer": 1
+      },
+      "provider_api_failures": 0,
+      "provider_success_rate": 1.0,
+      "records": 12,
+      "retrieval_generation_layers": {
+        "1_target_present_generation_correct": 1,
+        "3_target_absent_generation_grounded_to_supplied_evidence": 1,
+        "4_target_absent_generation_unsupported": 5
+      },
+      "structured_output_failures": 0,
+      "target_present_records": 2,
+      "tokens": {
+        "cached_input": 0,
+        "input": 20541,
+        "output": 1871,
+        "reasoning": 0,
+        "total": 22412
+      },
+      "unsupported_claim_rate_proxy": 0.5625
+    },
+    "uncertain": []
+  },
+  "evaluation_version": "behaviour-cleanroom-v1",
+  "excluded_uncertain_records": 0,
+  "historical_evidence_digest": "9faf464cb462aa3a4b87a13942f7bea4f7c81cba6db99a97ea8a165aca5cebb5",
+  "historical_run_signature": "3664b44b7d4dbe620225d598",
+  "labels": {
+    "abstain": 3,
+    "answer": 9
+  },
+  "normalization_audit": {
+    "encoding_equivalence_candidate_not_applied": {
+      "answered_records": 8,
+      "reason": "reported separately because rag-v2 requires verbatim quotes; primary metrics remain strict",
+      "total_claims": 14,
+      "valid_answered_records": 5,
+      "valid_claims": 11
+    },
+    "model_visible_evidence_changed": false,
+    "strict_contract_matching": {
+      "answered_records": 8,
+      "total_claims": 14,
+      "valid_answered_records": 3,
+      "valid_claims": 7
+    },
+    "type_a_applied": [],
+    "type_a_candidates_not_applied": [
+      {
+        "claim": 1,
+        "classification": "type_a_candidate_not_applied",
+        "evidence_id": "E3",
+        "package_id": "a35f9a4b139ba3a67608dcee",
+        "reason": "encoding repair would change evaluator matching only"
+      },
+      {
+        "claim": 1,
+        "classification": "type_a_candidate_not_applied",
+        "evidence_id": "E1",
+        "package_id": "88f23f608864cf5f1372a038",
+        "reason": "encoding repair would change evaluator matching only"
+      },
+      {
+        "claim": 2,
+        "classification": "type_a_candidate_not_applied",
+        "evidence_id": "E1",
+        "package_id": "88f23f608864cf5f1372a038",
+        "reason": "encoding repair would change evaluator matching only"
+      },
+      {
+        "claim": 1,
+        "classification": "type_a_candidate_not_applied",
+        "evidence_id": "E1",
+        "package_id": "404920c168c10748e0258895",
+        "reason": "encoding repair would change evaluator matching only"
+      }
+    ],
+    "type_b_not_applied": [
+      {
+        "change": "normalize query, evidence, case/source identifiers, or formatting",
+        "consequence": "new evidence digest, run signature, and frozen pilot required"
+      },
+      {
+        "change": "expose citation-relationship diagnostics to the model",
+        "consequence": "new evidence digest, run signature, and frozen pilot required"
+      }
+    ]
+  },
+  "output_quality_all_12": {
+    "answered_records": 8,
+    "citation_completeness": 1.0,
+    "citation_correctness": 0.4375,
+    "citation_validity": 0.375,
+    "hallucinated_authority_package_ids": [],
+    "hallucinated_authority_rate": 0.0,
+    "hallucinated_authority_records": 0,
+    "provider_api_failures": 0,
+    "provider_successes": 12,
+    "records": 12,
+    "structured_output_failures": 0,
+    "unsupported_claim_rate": 0.5625
+  },
+  "provider_calls_made_by_recomputation": 0,
+  "schema_version": 1,
+  "uncertain_records": []
+}

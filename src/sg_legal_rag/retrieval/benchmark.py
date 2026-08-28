@@ -30,6 +30,7 @@ class QueryRecord:
     relevant_texts: set[str] = field(default_factory=set)
     courts: set[str] = field(default_factory=set)
     years: set[str] = field(default_factory=set)
+    gold_contexts: dict[str, GoldCitationContext] = field(default_factory=dict)
 
     @property
     def court(self) -> str:
@@ -38,6 +39,23 @@ class QueryRecord:
     @property
     def year(self) -> str:
         return next(iter(self.years)) if len(self.years) == 1 else "MIXED"
+
+
+@dataclass(frozen=True)
+class GoldCitationContext:
+    """Evaluation-only citation evidence preserved from one exact test CSV row."""
+
+    row_id: str
+    case_key: str
+    raw_case: str
+    source_url: str
+    source_reference: str
+    source_year: int
+    fact_query: str
+    principle: str
+    paragraph: str
+    paragraph_digest: str
+    identifier_matched: bool
 
 
 def percentile(values: Iterable[float], proportion: float) -> float:
@@ -166,11 +184,15 @@ def add_query(
     relevant_text: str,
     court: str,
     year: str,
-) -> None:
+    gold_context: GoldCitationContext | None = None,
+) -> QueryRecord:
     record = builders.setdefault(key, QueryRecord(text=text))
     record.relevant_texts.add(relevant_text)
     record.courts.add(court)
     record.years.add(year)
+    if gold_context is not None:
+        record.gold_contexts.setdefault(gold_context.row_id, gold_context)
+    return record
 
 
 def load_full_corpus_and_queries(

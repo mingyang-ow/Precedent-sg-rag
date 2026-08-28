@@ -1,0 +1,24 @@
+[sampling]
+modes = ["facts_only", "facts_principle"]
+top_ks = [1, 3, 5]
+queries_per_stratum = 16
+seed = 20260826
+
+[generation]
+provider = "openai_responses"
+model = "gpt-5.6-luna"
+reasoning_effort = "none"
+verbosity = "low"
+max_output_tokens = 600
+expected_output_tokens = 180
+prompt_version = "rag-v2"
+automatic_retries = 0
+
+[pricing]
+snapshot_date = "2026-08-26"
+input_usd_per_million = 0.20
+cached_input_usd_per_million = 0.02
+output_usd_per_million = 1.20
+
+[evaluation]
+manual_review_records = 36

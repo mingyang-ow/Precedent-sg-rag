@@ -4,6 +4,7 @@ import re
 import unicodedata
 
 TOKEN_RE = re.compile(r"\w+(?:['’]\w+)?", re.UNICODE)
+TOKENIZATION_VERSION = "nfkc-casefold-unicode-word-v1"
 
 
 def tokenize(text: str) -> list[str]:

@@ -1,0 +1,19 @@
+services:
+  api:
+    build:
+      context: .
+    image: precedent-sg-rag:local
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      PRECEDENT_RETRIEVAL_ARTIFACTS: /opt/precedent/retrieval-artifacts
+    volumes:
+      - ${PRECEDENT_RETRIEVAL_ARTIFACTS:-./data/processed/retrieval-artifacts}:/opt/precedent/retrieval-artifacts:ro
+    ports:
+      - "8000:8000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
