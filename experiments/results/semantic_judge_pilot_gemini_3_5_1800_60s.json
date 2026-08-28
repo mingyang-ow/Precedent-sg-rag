@@ -1,0 +1,312 @@
+{
+  "automatic_fallback": false,
+  "automatic_retries": 0,
+  "metrics": {
+    "claim_level": {
+      "agreement": 1.0,
+      "raw_counts": {
+        "agreement": 7,
+        "evaluated": 7,
+        "judge": {
+          "supported": 7
+        },
+        "reference": {
+          "supported": 7
+        },
+        "reference_uncertain_excluded_from_binary": 0
+      },
+      "supported_precision": 1.0,
+      "supported_recall": 1.0,
+      "uncertain_rate": 0.0,
+      "unsupported_detection_rate": null
+    },
+    "disagreements": [
+      {
+        "claim_index": null,
+        "classification": "pending_manual_review",
+        "judge_verdict": "supported",
+        "level": "record",
+        "package_id": "266a3190b2ba1df079c15645",
+        "reference_verdict": "unsupported"
+      },
+      {
+        "claim_index": null,
+        "classification": "pending_manual_review",
+        "judge_verdict": "supported",
+        "level": "record",
+        "package_id": "615689094ac2690f02642f7d",
+        "reference_verdict": "unsupported"
+      }
+    ],
+    "judge_unavailable": [],
+    "malformed_output": [],
+    "not_attempted": [
+      "4a485ec6ed04a9358fa9b711",
+      "88f23f608864cf5f1372a038",
+      "404920c168c10748e0258895"
+    ],
+    "provider_incomplete": [
+      "a35f9a4b139ba3a67608dcee"
+    ],
+    "record_level": {
+      "agreement": 0.5,
+      "raw_counts": {
+        "agreement": 2,
+        "evaluated": 4,
+        "judge": {
+          "supported": 4
+        },
+        "reference": {
+          "supported": 2,
+          "unsupported": 2
+        },
+        "reference_uncertain_excluded_from_binary": 0
+      },
+      "supported_precision": 0.5,
+      "supported_recall": 1.0,
+      "uncertain_rate": 0.0,
+      "unsupported_detection_rate": 0.0
+    }
+  },
+  "model": "gemini-3.5-flash",
+  "operational_summary": {
+    "duration_seconds": 116.7727691050004,
+    "estimated_cost_usd": 0.0,
+    "failures": 1,
+    "input_tokens": 7957,
+    "judge_unavailable": 0,
+    "malformed_outputs": 0,
+    "output_tokens": 1112,
+    "provider_incomplete": 1,
+    "successes": 4,
+    "thought_tokens": 3505,
+    "total_tokens": 12574,
+    "verdicts": {
+      "supported": 4
+    }
+  },
+  "provider": "google_gemini_interactions",
+  "records_processed": 5,
+  "requests": 5,
+  "results": [
+    {
+      "package_digest": "e9ea386ef14099bc75946c2ed6635d41844514f886048b4cfeb556fbc648421e",
+      "package_id": "55b464702f081a3ff6d688fb",
+      "result": {
+        "decision": {
+          "claims": [
+            {
+              "claim_index": 0,
+              "evidence_ids": [
+                "E1"
+              ],
+              "reason": "The statement accurately reflects the facts of the precedent cited in E1, where the appellant was convicted of capital diamorphine trafficking, their appeal was dismissed in April 2011, and their clemency petition was subsequently rejected.",
+              "verdict": "supported"
+            },
+            {
+              "claim_index": 1,
+              "evidence_ids": [
+                "E1"
+              ],
+              "reason": "The statement accurately summarizes the provisions of the newly introduced s 33B of the Misuse of Drugs Act as set out in E1, which allows for a life sentence instead of death if the offender proves on a balance of probabilities that their involvement was restricted to specified activities such as transport.",
+              "verdict": "supported"
+            }
+          ],
+          "schema_version": "semantic-judge-schema-v1",
+          "summary_reason": "The generated answer is fully supported by the provided evidence. It correctly identifies the details of the precedent case and accurately describes the statutory requirements of section 33B of the Misuse of Drugs Act from the text.",
+          "verdict": "supported"
+        },
+        "error": null,
+        "estimated_cost_usd": 0.0,
+        "generated_at": "2026-08-28T00:11:49.459347+00:00",
+        "incomplete_reason": null,
+        "latency_ms": 17455.007681999632,
+        "partial_model_output_present": null,
+        "provider_status": null,
+        "requested_model": "gemini-3.5-flash",
+        "response_id": null,
+        "returned_model": "gemini-3.5-flash",
+        "status": "succeeded",
+        "thought_content_present": null,
+        "usage": {
+          "input_tokens": 1212,
+          "output_tokens": 275,
+          "thought_tokens": 446,
+          "total_tokens": 1933
+        }
+      },
+      "run_signature": "7931cbc002864119547f9320",
+      "schema_version": 1
+    },
+    {
+      "package_digest": "1e2583a78544f886928c0dafdd7d81240a55a23dfd772d36140a41edc1a2abb0",
+      "package_id": "266a3190b2ba1df079c15645",
+      "result": {
+        "decision": {
+          "claims": [
+            {
+              "claim_index": 0,
+              "evidence_ids": [
+                "E1"
+              ],
+              "reason": "The claim accurately reflects and paraphrases the explanation of the 'Said v Butt' principle as defined in paragraph 82 of E1.",
+              "verdict": "supported"
+            }
+          ],
+          "schema_version": "semantic-judge-schema-v1",
+          "summary_reason": "The generated answer is fully supported by the provided evidence. It correctly states the 'Said v Butt' principle regarding director exemption from personal liability for a company's breach of contract, and accurately notes that the text does not make a determination on the specific facts of the user's case.",
+          "verdict": "supported"
+        },
+        "error": null,
+        "estimated_cost_usd": 0.0,
+        "generated_at": "2026-08-28T00:12:05.914142+00:00",
+        "incomplete_reason": null,
+        "latency_ms": 16453.5970930001,
+        "partial_model_output_present": null,
+        "provider_status": null,
+        "requested_model": "gemini-3.5-flash",
+        "response_id": null,
+        "returned_model": "gemini-3.5-flash",
+        "status": "succeeded",
+        "thought_content_present": null,
+        "usage": {
+          "input_tokens": 1048,
+          "output_tokens": 163,
+          "thought_tokens": 616,
+          "total_tokens": 1827
+        }
+      },
+      "run_signature": "7931cbc002864119547f9320",
+      "schema_version": 1
+    },
+    {
+      "package_digest": "94d86fd1d0627c081a0b2325d6c822a9c1024c3002018d8e45595c0aa9c9dd2a",
+      "package_id": "615689094ac2690f02642f7d",
+      "result": {
+        "decision": {
+          "claims": [
+            {
+              "claim_index": 0,
+              "evidence_ids": [
+                "E1"
+              ],
+              "reason": "E1 states that the plaintiff executed a deed (prepared and advised on by her solicitor) which detrimentally altered her position, and the court set it aside because the solicitor failed to advise her on how it affected her rights.",
+              "verdict": "supported"
+            },
+            {
+              "claim_index": 1,
+              "evidence_ids": [
+                "E1"
+              ],
+              "reason": "E1 explicitly states that because the solicitor was in a position of conflict, he should have advised the plaintiff to obtain independent legal advice.",
+              "verdict": "supported"
+            }
+          ],
+          "schema_version": "semantic-judge-schema-v1",
+          "summary_reason": "The recommended case and explanation are supported by the provided evidence. Both claims accurately summarize the facts and rulings of Willis and others v Barron and others [1902] as presented in E1.",
+          "verdict": "supported"
+        },
+        "error": null,
+        "estimated_cost_usd": 0.0,
+        "generated_at": "2026-08-28T00:12:36.180645+00:00",
+        "incomplete_reason": null,
+        "latency_ms": 30266.134925000188,
+        "partial_model_output_present": null,
+        "provider_status": null,
+        "requested_model": "gemini-3.5-flash",
+        "response_id": null,
+        "returned_model": "gemini-3.5-flash",
+        "status": "succeeded",
+        "thought_content_present": null,
+        "usage": {
+          "input_tokens": 2113,
+          "output_tokens": 238,
+          "thought_tokens": 864,
+          "total_tokens": 3215
+        }
+      },
+      "run_signature": "7931cbc002864119547f9320",
+      "schema_version": 1
+    },
+    {
+      "package_digest": "96599036d346e31277ee39b8b8749d1192718e42751136a2cd7e70fb81ba0869",
+      "package_id": "7cfe4dcc0cc44a18b4f6a498",
+      "result": {
+        "decision": {
+          "claims": [
+            {
+              "claim_index": 0,
+              "evidence_ids": [
+                "E1"
+              ],
+              "reason": "E1 explicitly states that the burden lies on the plaintiffs to establish misrepresentation.",
+              "verdict": "supported"
+            },
+            {
+              "claim_index": 1,
+              "evidence_ids": [
+                "E1"
+              ],
+              "reason": "E1 explicitly states that it is incumbent on the plaintiffs to adduce proof that the defendants have made false representations of fact.",
+              "verdict": "supported"
+            }
+          ],
+          "schema_version": "semantic-judge-schema-v1",
+          "summary_reason": "All claims are fully supported by E1, which outlines that the burden of proof lies on the plaintiffs to establish misrepresentation and to prove that the defendants made false representations of fact.",
+          "verdict": "supported"
+        },
+        "error": null,
+        "estimated_cost_usd": 0.0,
+        "generated_at": "2026-08-28T00:12:51.298028+00:00",
+        "incomplete_reason": null,
+        "latency_ms": 15117.075398000452,
+        "partial_model_output_present": null,
+        "provider_status": null,
+        "requested_model": "gemini-3.5-flash",
+        "response_id": null,
+        "returned_model": "gemini-3.5-flash",
+        "status": "succeeded",
+        "thought_content_present": null,
+        "usage": {
+          "input_tokens": 1122,
+          "output_tokens": 203,
+          "thought_tokens": 533,
+          "total_tokens": 1858
+        }
+      },
+      "run_signature": "7931cbc002864119547f9320",
+      "schema_version": 1
+    },
+    {
+      "package_digest": "dff2a42e8a7698579f5ef64fc75a24ba5fc2c96cdcd0d694c8cc126982e46ce4",
+      "package_id": "a35f9a4b139ba3a67608dcee",
+      "result": {
+        "decision": null,
+        "error": "provider interaction did not complete",
+        "estimated_cost_usd": 0.0,
+        "generated_at": "2026-08-28T00:13:28.779294+00:00",
+        "incomplete_reason": null,
+        "latency_ms": 37480.95400700004,
+        "partial_model_output_present": true,
+        "provider_status": "incomplete",
+        "requested_model": "gemini-3.5-flash",
+        "response_id": null,
+        "returned_model": "gemini-3.5-flash",
+        "status": "provider_incomplete",
+        "thought_content_present": false,
+        "usage": {
+          "input_tokens": 2462,
+          "output_tokens": 233,
+          "thought_tokens": 1046,
+          "total_tokens": 3741
+        }
+      },
+      "run_signature": "7931cbc002864119547f9320",
+      "schema_version": 1
+    }
+  ],
+  "run_signature": "7931cbc002864119547f9320",
+  "run_status": "stopped_provider_incomplete",
+  "schema_version": 1,
+  "stopped_package_id": "a35f9a4b139ba3a67608dcee"
+}

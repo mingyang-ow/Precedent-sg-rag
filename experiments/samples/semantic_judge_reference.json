@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "reference_version": "semantic-judge-reference-v1",
+  "source_run_signature": "3664b44b7d4dbe620225d598",
+  "source_pilot_digest": "9ecb2a0d2f42232bf82e8d8957c095312e82acf08ff65a3cbaee1331dbac0f06",
+  "provenance": [
+    "pre-existing completed behavioral-pilot manual review",
+    "pre-existing clean-room behavioral adjudication",
+    "Phase 3.1 manual citation audit"
+  ],
+  "reviewer_description": "Reference adjudication assembled from frozen pre-judge manual and clean-room findings; it is not human ground truth.",
+  "records": [
+    {
+      "package_id": "55b464702f081a3ff6d688fb",
+      "verdict": "supported",
+      "claims": [
+        {"claim_index": 0, "verdict": "supported", "rationale": "The cited passage supports the first stated proposition despite a non-verbatim ellipsis in the quote."},
+        {"claim_index": 1, "verdict": "supported", "rationale": "The cited passage supports the second stated proposition."}
+      ],
+      "rationale": "The recommendation and both substantive propositions follow from E1; the earlier issue was quotation form, not semantic support."
+    },
+    {
+      "package_id": "266a3190b2ba1df079c15645",
+      "verdict": "unsupported",
+      "claims": [
+        {"claim_index": 0, "verdict": "supported", "rationale": "The Said v Butt proposition is stated in E1."}
+      ],
+      "rationale": "The proposition text appears, but the supplied case metadata does not defensibly support the recommended Boardman v Phipps authority."
+    },
+    {
+      "package_id": "615689094ac2690f02642f7d",
+      "verdict": "unsupported",
+      "claims": [
+        {"claim_index": 0, "verdict": "supported", "rationale": "The cited passage supports the first Willis proposition."},
+        {"claim_index": 1, "verdict": "supported", "rationale": "The cited passage supports the second Willis proposition."}
+      ],
+      "rationale": "The propositions are genuine, but the answer makes an unsupported relevance leap from advice on executing a deed to the query's intended-beneficiary, delay, causation, and lost-gift issues."
+    },
+    {
+      "package_id": "7cfe4dcc0cc44a18b4f6a498",
+      "verdict": "supported",
+      "claims": [
+        {"claim_index": 0, "verdict": "supported", "rationale": "The cited passage supports the first misrepresentation burden proposition."},
+        {"claim_index": 1, "verdict": "supported", "rationale": "The cited passage supports the second misrepresentation burden proposition."}
+      ],
+      "rationale": "The two propositions and bounded recommendation follow from the supplied evidence, and the answer avoids deciding the current facts."
+    },
+    {
+      "package_id": "a35f9a4b139ba3a67608dcee",
+      "verdict": "supported",
+      "claims": [
+        {"claim_index": 0, "verdict": "supported", "rationale": "The cited E3 passage supports the first sentencing proposition."},
+        {"claim_index": 1, "verdict": "supported", "rationale": "The cited E3 passage supports the second sentencing proposition."}
+      ],
+      "rationale": "Both propositions and the recommendation are semantically faithful; earlier failures concerned quote encoding or abbreviation."
+    },
+    {
+      "package_id": "4a485ec6ed04a9358fa9b711",
+      "verdict": "supported",
+      "claims": [
+        {"claim_index": 0, "verdict": "supported", "rationale": "E1 supports the first stated forum proposition."},
+        {"claim_index": 1, "verdict": "supported", "rationale": "E1 supports the second stated forum proposition."}
+      ],
+      "rationale": "The answer under-uses other supplied evidence but does not materially exceed the cited forum principles."
+    },
+    {
+      "package_id": "88f23f608864cf5f1372a038",
+      "verdict": "unsupported",
+      "claims": [
+        {"claim_index": 0, "verdict": "supported", "rationale": "The proposition text is supported by E1."},
+        {"claim_index": 1, "verdict": "supported", "rationale": "The second proposition text is supported by E1."}
+      ],
+      "rationale": "The adjacent propositions do not substantively support attributing the recommendation to the supplied Chan Choon Ming case metadata."
+    },
+    {
+      "package_id": "404920c168c10748e0258895",
+      "verdict": "unsupported",
+      "claims": [
+        {"claim_index": 0, "verdict": "supported", "rationale": "The narrow proposition stated in the claim appears in E1."}
+      ],
+      "rationale": "The passage does not support the answer's recommendation for the query's share-dilution issue."
+    }
+  ],
+  "digest": "92a4e50924a57d9dcd15e46ba000f3407bcb0c681f3a8ff594d450d404b3f234"
+}

@@ -1,0 +1,155 @@
+{
+  "automatic_fallback": false,
+  "automatic_retries": 0,
+  "metrics": {
+    "claim_level": {
+      "agreement": null,
+      "raw_counts": {
+        "agreement": 0,
+        "evaluated": 0,
+        "judge": {},
+        "reference": {},
+        "reference_uncertain_excluded_from_binary": 0
+      },
+      "supported_precision": null,
+      "supported_recall": null,
+      "uncertain_rate": null,
+      "unsupported_detection_rate": null
+    },
+    "disagreements": [],
+    "judge_unavailable": [],
+    "malformed_output": [
+      "55b464702f081a3ff6d688fb",
+      "266a3190b2ba1df079c15645"
+    ],
+    "not_attempted": [
+      "7cfe4dcc0cc44a18b4f6a498",
+      "a35f9a4b139ba3a67608dcee",
+      "4a485ec6ed04a9358fa9b711",
+      "88f23f608864cf5f1372a038",
+      "404920c168c10748e0258895"
+    ],
+    "provider_incomplete": [
+      "615689094ac2690f02642f7d"
+    ],
+    "record_level": {
+      "agreement": null,
+      "raw_counts": {
+        "agreement": 0,
+        "evaluated": 0,
+        "judge": {},
+        "reference": {},
+        "reference_uncertain_excluded_from_binary": 0
+      },
+      "supported_precision": null,
+      "supported_recall": null,
+      "uncertain_rate": null,
+      "unsupported_detection_rate": null
+    }
+  },
+  "model": "gemini-3.5-flash",
+  "operational_summary": {
+    "duration_seconds": 23.657514912999886,
+    "estimated_cost_usd": 0.0,
+    "failures": 3,
+    "input_tokens": 4373,
+    "judge_unavailable": 0,
+    "malformed_outputs": 2,
+    "output_tokens": 520,
+    "provider_incomplete": 1,
+    "successes": 0,
+    "thought_tokens": 2801,
+    "total_tokens": 7694,
+    "verdicts": {}
+  },
+  "provider": "google_gemini_interactions",
+  "records_processed": 3,
+  "requests": 3,
+  "results": [
+    {
+      "package_digest": "e9ea386ef14099bc75946c2ed6635d41844514f886048b4cfeb556fbc648421e",
+      "package_id": "55b464702f081a3ff6d688fb",
+      "result": {
+        "decision": null,
+        "error": "ValidationError: 1 validation error for SemanticJudgeDecision\nschema_version\n  Input should be 'semantic-judge-schema-v1' [type=literal_error, input_value='semantic-grounding-rubric-v1', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+        "estimated_cost_usd": 0.0,
+        "generated_at": "2026-08-27T23:32:47.484585+00:00",
+        "incomplete_reason": null,
+        "latency_ms": 7546.556854999835,
+        "partial_model_output_present": null,
+        "provider_status": null,
+        "requested_model": "gemini-3.5-flash",
+        "response_id": null,
+        "returned_model": "gemini-3.5-flash",
+        "status": "malformed_output",
+        "thought_content_present": null,
+        "usage": {
+          "input_tokens": 1212,
+          "output_tokens": 292,
+          "thought_tokens": 882,
+          "total_tokens": 2386
+        }
+      },
+      "run_signature": "27ee4123657ad181b310cb9b",
+      "schema_version": 1
+    },
+    {
+      "package_digest": "1e2583a78544f886928c0dafdd7d81240a55a23dfd772d36140a41edc1a2abb0",
+      "package_id": "266a3190b2ba1df079c15645",
+      "result": {
+        "decision": null,
+        "error": "ValidationError: 1 validation error for SemanticJudgeDecision\nschema_version\n  Input should be 'semantic-judge-schema-v1' [type=literal_error, input_value='semantic-grounding-rubric-v1', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+        "estimated_cost_usd": 0.0,
+        "generated_at": "2026-08-27T23:32:53.182655+00:00",
+        "incomplete_reason": null,
+        "latency_ms": 5697.346940999978,
+        "partial_model_output_present": null,
+        "provider_status": null,
+        "requested_model": "gemini-3.5-flash",
+        "response_id": null,
+        "returned_model": "gemini-3.5-flash",
+        "status": "malformed_output",
+        "thought_content_present": null,
+        "usage": {
+          "input_tokens": 1048,
+          "output_tokens": 193,
+          "thought_tokens": 769,
+          "total_tokens": 2010
+        }
+      },
+      "run_signature": "27ee4123657ad181b310cb9b",
+      "schema_version": 1
+    },
+    {
+      "package_digest": "94d86fd1d0627c081a0b2325d6c822a9c1024c3002018d8e45595c0aa9c9dd2a",
+      "package_id": "615689094ac2690f02642f7d",
+      "result": {
+        "decision": null,
+        "error": "provider interaction did not complete",
+        "estimated_cost_usd": 0.0,
+        "generated_at": "2026-08-27T23:33:03.596564+00:00",
+        "incomplete_reason": null,
+        "latency_ms": 10413.611117000073,
+        "partial_model_output_present": true,
+        "provider_status": "incomplete",
+        "requested_model": "gemini-3.5-flash",
+        "response_id": null,
+        "returned_model": "gemini-3.5-flash",
+        "status": "provider_incomplete",
+        "thought_content_present": false,
+        "usage": {
+          "input_tokens": 2113,
+          "output_tokens": 35,
+          "thought_tokens": 1150,
+          "total_tokens": 3298
+        }
+      },
+      "run_signature": "27ee4123657ad181b310cb9b",
+      "schema_version": 1
+    }
+  ],
+  "run_signature": "27ee4123657ad181b310cb9b",
+  "run_status": "stopped_provider_incomplete",
+  "schema_version": 1,
+  "stopped_package_id": "615689094ac2690f02642f7d"
+}

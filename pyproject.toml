@@ -29,6 +29,10 @@ generation = [
   "pydantic>=2.10,<3",
   "tiktoken>=0.12,<1",
 ]
+judge = [
+  "httpx>=0.28,<1",
+  "pydantic>=2.10,<3",
+]
 api = [
   "fastapi>=0.141.1,<0.142",
   "prometheus-client>=0.21,<1",
@@ -49,6 +53,7 @@ sg-legal-corpus-repair = "sg_legal_rag.retrieval.corpus_repair_benchmark:main"
 sg-legal-rag-evaluate = "sg_legal_rag.generation.benchmark:main"
 sg-legal-rag-cleanroom = "sg_legal_rag.generation.cleanroom_benchmark:main"
 sg-legal-rag-citation-audit = "sg_legal_rag.generation.citation_audit:main"
+sg-legal-semantic-judge = "sg_legal_rag.generation.semantic_judge_benchmark:main"
 sg-legal-build-retrieval-artifacts = "sg_legal_rag.retrieval.artifacts:main"
 
 [tool.hatch.build.targets.wheel]
