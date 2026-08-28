@@ -65,9 +65,12 @@ estimate.
 | IDs absent from lookup | 0 | 0 |
 | Gold-name/lookup mismatches | 0 | 0 |
 
-The case lookup has 48,298 IDs, 180 fewer than the CSV's unique cited-case strings. The fact-only
-query IDs are a subset of the principle-augmented IDs: 9,942 are shared and 37 occur only in the
-principle pool. Paired comparisons must use the shared intersection and disclose this restriction.
+The case lookup has 48,298 IDs, 180 fewer than the CSV's unique cited-case strings. The two pool
+files contain the same 9,942 unique `(fact, cited case)` pairs, while the principle pool contains 37
+additional triples where a fact/target pair has another principle. Numeric pool IDs are not stable
+semantic keys: only 80 same-numbered records contain the same fact/target pair. A paired query-mode
+ablation must therefore rescore the same principle candidate pool with and without its principle;
+joining the two releases on numeric pool ID would silently compare unrelated examples.
 
 The authors' sampled-pool results and this project's future full-corpus results answer different
 questions. They will be reported in separate tables and never compared as if candidate difficulty

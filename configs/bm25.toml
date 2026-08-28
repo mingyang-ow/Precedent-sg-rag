@@ -1,0 +1,9 @@
+[bm25]
+k1 = 1.2
+b = 0.75
+idf = "lucene"
+tokenizer = "unicode_words_v1"
+tie_break = "ascending_candidate_id"
+
+[evaluation]
+k_values = [1, 5, 10, 20]

@@ -37,8 +37,8 @@ def test_benchmark_audit_checks_pool_integrity_and_pairing(tmp_path: Path) -> No
                 "pool_size": 2,
             },
             "q2": {
-                "correct_case_id": 1,
-                "correct_case_name": "Case B",
+                "correct_case_id": 0,
+                "correct_case_name": "Case A",
                 "fact_text": "facts",
                 "principle_text": "principle",
                 "query_text": "facts principle",
@@ -55,3 +55,6 @@ def test_benchmark_audit_checks_pool_integrity_and_pairing(tmp_path: Path) -> No
     assert report.direct.correct_not_in_pool == 0
     assert report.shared_query_ids == 1
     assert report.principle_only_query_ids == 1
+    assert report.numeric_ids_with_same_fact_target == 1
+    assert report.shared_fact_target_pairs == 1
+    assert report.principle_duplicate_fact_target_pairs == 1

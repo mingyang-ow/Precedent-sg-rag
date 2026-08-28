@@ -21,6 +21,7 @@ class PoolReport:
     ids_missing_from_lookup: int
     correct_names_mismatching_lookup: int
     empty_query_fields: int
+    unique_fact_target_pairs: int
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,9 @@ class BenchmarkReport:
     shared_query_ids: int
     direct_only_query_ids: int
     principle_only_query_ids: int
+    numeric_ids_with_same_fact_target: int
+    shared_fact_target_pairs: int
+    principle_duplicate_fact_target_pairs: int
     warnings: tuple[str, ...]
 
 
@@ -43,7 +47,7 @@ def validate_pool(
     path: Path,
     lookup: dict[str, str],
     required_query_fields: tuple[str, ...],
-) -> tuple[PoolReport, set[str]]:
+) -> tuple[PoolReport, dict[str, tuple[str, int]]]:
     raw = _load_json(path)
     if not isinstance(raw, dict):
         raise TypeError(f"{path.name}: expected a JSON object")
@@ -54,6 +58,7 @@ def validate_pool(
     missing_lookup_ids: set[int] = set()
     name_mismatches = 0
     empty_query_fields = 0
+    semantic_pairs: dict[str, tuple[str, int]] = {}
 
     for query_id, item in raw.items():
         if not isinstance(item, dict):
@@ -79,6 +84,7 @@ def validate_pool(
             name_mismatches += 1
         if any(not str(item.get(field, "")).strip() for field in required_query_fields):
             empty_query_fields += 1
+        semantic_pairs[query_id] = (str(item.get("fact_text", "")), correct_id)
 
     return (
         PoolReport(
@@ -90,8 +96,9 @@ def validate_pool(
             ids_missing_from_lookup=len(missing_lookup_ids),
             correct_names_mismatching_lookup=name_mismatches,
             empty_query_fields=empty_query_fields,
+            unique_fact_target_pairs=len(set(semantic_pairs.values())),
         ),
-        set(raw),
+        semantic_pairs,
     )
 
 
@@ -103,12 +110,12 @@ def inspect_benchmark(data_dir: Path) -> BenchmarkReport:
     ):
         raise ValueError(f"{lookup_path.name}: expected a string-to-string JSON object")
 
-    direct, direct_ids = validate_pool(
+    direct, direct_pairs_by_id = validate_pool(
         data_dir / "stage2_direct_candidate_pools_v2.json",
         lookup,
         required_query_fields=("fact_text",),
     )
-    principle, principle_ids = validate_pool(
+    principle, principle_pairs_by_id = validate_pool(
         data_dir / "stage2_single_stage_pools.json",
         lookup,
         required_query_fields=("fact_text", "principle_text", "query_text"),
@@ -119,10 +126,18 @@ def inspect_benchmark(data_dir: Path) -> BenchmarkReport:
         warnings.append(
             f"CSV card reports 48478 unique cited strings, but lookup contains {len(lookup)} IDs"
         )
-    if direct_ids != principle_ids:
+    direct_ids = set(direct_pairs_by_id)
+    principle_ids = set(principle_pairs_by_id)
+    direct_pairs = set(direct_pairs_by_id.values())
+    principle_pairs = set(principle_pairs_by_id.values())
+    numeric_ids_with_same_pair = sum(
+        direct_pairs_by_id[query_id] == principle_pairs_by_id[query_id]
+        for query_id in direct_ids & principle_ids
+    )
+    if numeric_ids_with_same_pair != len(direct_ids & principle_ids):
         warnings.append(
-            "fact-only and principle-augmented pools do not contain identical query IDs; paired "
-            "comparisons must use their intersection"
+            "numeric pool IDs are not semantic pairing keys; paired query-mode comparisons must "
+            "rescore the same candidate pool rather than join releases by ID"
         )
     for label, report in (("direct", direct), ("principle_augmented", principle)):
         if report.pool_sizes != {1000: report.queries}:
@@ -139,6 +154,9 @@ def inspect_benchmark(data_dir: Path) -> BenchmarkReport:
         shared_query_ids=len(direct_ids & principle_ids),
         direct_only_query_ids=len(direct_ids - principle_ids),
         principle_only_query_ids=len(principle_ids - direct_ids),
+        numeric_ids_with_same_fact_target=numeric_ids_with_same_pair,
+        shared_fact_target_pairs=len(direct_pairs & principle_pairs),
+        principle_duplicate_fact_target_pairs=len(principle_pairs_by_id) - len(principle_pairs),
         warnings=tuple(warnings),
     )
 
