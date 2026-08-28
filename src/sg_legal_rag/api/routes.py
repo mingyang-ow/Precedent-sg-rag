@@ -5,7 +5,7 @@ from collections.abc import Callable
 from functools import partial
 from typing import Any, TypeVar
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Request, Response, Security
 from prometheus_client import CONTENT_TYPE_LATEST
 
 from sg_legal_rag.generation.production_contract import (
@@ -29,16 +29,25 @@ from .models import (
     VersionResponse,
 )
 from .observability import current_request_id, log_event
+from .security import (
+    GenerationConcurrencyExceeded,
+    require_metrics_auth,
+    require_service_auth,
+)
 from .service import RAGApplicationService, ServiceTimings
 
 router = APIRouter()
 ResultT = TypeVar("ResultT")
 ERROR_RESPONSES = {
+    401: {"model": ErrorResponse, "description": "Missing or invalid service credential"},
     400: {"model": ErrorResponse, "description": "Invalid request policy"},
+    413: {"model": ErrorResponse, "description": "Request or context budget exceeded"},
+    429: {"model": ErrorResponse, "description": "Generation capacity saturated"},
     422: {"model": ErrorResponse, "description": "Request schema validation failed"},
     500: {"model": ErrorResponse, "description": "Evidence integrity or internal failure"},
     502: {"model": ErrorResponse, "description": "Provider or generated-output failure"},
     503: {"model": ErrorResponse, "description": "Required dependency unavailable"},
+    504: {"model": ErrorResponse, "description": "Generation provider timeout"},
 }
 
 
@@ -81,6 +90,7 @@ async def health() -> HealthResponse:
 @router.get(
     "/metrics",
     response_class=Response,
+    dependencies=[Security(require_metrics_auth)],
     summary="Prometheus metrics",
     description=(
         "Exposes privacy-safe operational metrics. This endpoint should be network-restricted "
@@ -144,6 +154,7 @@ async def version(request: Request) -> VersionResponse:
 @router.post(
     "/retrieve",
     response_model=RetrieveResponse,
+    dependencies=[Security(require_service_auth)],
     responses=ERROR_RESPONSES,
     summary="Retrieve historical precedent evidence",
     description="Runs passage BM25 and returns application-controlled source passages.",
@@ -199,6 +210,7 @@ async def retrieve(payload: RetrieveRequest, request: Request) -> RetrieveRespon
 @router.post(
     "/answer",
     response_model=AnswerResponse,
+    dependencies=[Security(require_service_auth)],
     responses=ERROR_RESPONSES,
     summary="Generate an evidence-resolved precedent answer",
     description=(
@@ -207,13 +219,19 @@ async def retrieve(payload: RetrieveRequest, request: Request) -> RetrieveRespon
     ),
 )
 async def answer(payload: AnswerRequest, request: Request) -> AnswerResponse:
-    operation = await _run_blocking(
-        request,
-        _service(request).answer,
-        facts=payload.facts,
-        principle=payload.principle,
-        top_k=payload.top_k,
-    )
+    service = _service(request)
+    if not service.try_acquire_generation_slot():
+        raise GenerationConcurrencyExceeded("generation concurrency limit reached")
+    try:
+        operation = await _run_blocking(
+            request,
+            service.answer,
+            facts=payload.facts,
+            principle=payload.principle,
+            top_k=payload.top_k,
+        )
+    finally:
+        service.release_generation_slot()
     resolved = operation.answer
     log_event(
         "rag_operation",

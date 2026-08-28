@@ -341,13 +341,13 @@ def test_production_schema_version_and_signature_are_deterministic() -> None:
 def test_production_prompt_preserves_answerability_and_removes_quote_generation() -> None:
     normalized = " ".join(PRODUCTION_SYSTEM_INSTRUCTIONS.split())
 
-    assert PRODUCTION_PROMPT_VERSION == "rag-production-v1"
+    assert PRODUCTION_PROMPT_VERSION == "rag-production-v2"
     assert "relevant authority for the legal principle, rule, or test" in normalized
     assert "even if factual application remains unresolved" in normalized
     assert "Abstain only when" in normalized
     assert "Do not generate, copy, or paraphrase source_text" in normalized
     assert production_prompt_signature() == (
-        "91557588b2157efa9aca3d6c9a5d75a1fb41ed1f0b4b3005a7a37c9200f7328a"
+        "b4aacdd698e0801dd80e1bc9b03e65f57f5a92f0ea5d6e95dae07b0560064a3e"
     )
     assert hashlib.sha256(SYSTEM_INSTRUCTIONS.encode("utf-8")).hexdigest() == (
         "29fa06887d945fd91959c89b6d9637d0cb732beb21ae4f5d2bd001aa9e3446be"

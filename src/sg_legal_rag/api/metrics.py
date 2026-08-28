@@ -22,10 +22,17 @@ FAILURE_CATEGORIES = frozenset(
         "retrieval_unavailable",
         "generation_unavailable",
         "request_validation_failure",
+        "authentication_failure",
+        "request_too_large",
+        "context_budget_exceeded",
+        "concurrency_limit",
+        "provider_timeout",
         "internal_error",
     }
 )
-PROVIDER_FAILURE_CATEGORIES = frozenset({"provider_failure", "malformed_generated_output"})
+PROVIDER_FAILURE_CATEGORIES = frozenset(
+    {"provider_failure", "provider_timeout", "malformed_generated_output"}
+)
 PROVIDER_NAMES = frozenset({"openai", "fake", "custom"})
 MODEL_FAMILIES = frozenset({"gpt-5.6-luna", "fake", "custom"})
 CITATION_ISSUE_CODES = frozenset(code.value for code in CitationContractIssueCode)

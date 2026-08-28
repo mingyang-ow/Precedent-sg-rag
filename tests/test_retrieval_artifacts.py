@@ -10,6 +10,7 @@ from typing import Any
 import httpx
 import numpy as np
 import pytest
+from pydantic import SecretStr
 
 from sg_legal_rag.api.app import create_app
 from sg_legal_rag.api.retrieval import PreparedPassageBM25Retriever, RetrievalUnavailable
@@ -112,10 +113,13 @@ def _canonical(value: object) -> bytes:
 
 
 class OfflineASGIClient:
-    def __init__(self, application: Any) -> None:
+    def __init__(self, application: Any, *, headers: dict[str, str] | None = None) -> None:
         self.application = application
+        self.headers = headers or {}
 
     def request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
+        request_headers = {**self.headers, **kwargs.pop("headers", {})}
+
         async def send() -> httpx.Response:
             async with (
                 self.application.router.lifespan_context(self.application),
@@ -124,7 +128,7 @@ class OfflineASGIClient:
                     base_url="http://testserver",
                 ) as client,
             ):
-                return await client.request(method, path, **kwargs)
+                return await client.request(method, path, headers=request_headers, **kwargs)
 
         return asyncio.run(send())
 
@@ -227,6 +231,51 @@ def test_corrupted_artifact_is_rejected(
         load_retrieval_artifacts(path)
 
 
+def test_symlinked_bundle_manifest_and_artifact_are_rejected(
+    tmp_path: Path,
+    corpus: CorpusRepairDataset,
+    provenance: RetrievalBuildProvenance,
+) -> None:
+    path, _ = _bundle(tmp_path / "bundle", corpus, provenance)
+    alias = tmp_path / "bundle-alias"
+    alias.symlink_to(path, target_is_directory=True)
+
+    with pytest.raises(RetrievalArtifactError, match="bundle cannot be a symbolic link"):
+        load_retrieval_artifacts(alias)
+
+    manifest = path / MANIFEST_FILE
+    real_manifest = path / "manifest.real"
+    manifest.rename(real_manifest)
+    manifest.symlink_to(real_manifest.name)
+    with pytest.raises(RetrievalArtifactError, match="manifest cannot be a symbolic link"):
+        load_retrieval_artifacts(path)
+
+    manifest.unlink()
+    real_manifest.rename(manifest)
+    artifact = path / CORPUS_FILE
+    real_artifact = path / "corpus.real"
+    artifact.rename(real_artifact)
+    artifact.symlink_to(real_artifact.name)
+    with pytest.raises(RetrievalArtifactError, match="cannot be a symbolic link"):
+        load_retrieval_artifacts(path)
+
+
+def test_manifest_path_traversal_file_name_is_rejected(
+    tmp_path: Path,
+    corpus: CorpusRepairDataset,
+    provenance: RetrievalBuildProvenance,
+) -> None:
+    path, _ = _bundle(tmp_path / "bundle", corpus, provenance)
+    manifest_path = path / MANIFEST_FILE
+    manifest_path.chmod(0o644)
+    manifest = json.loads(manifest_path.read_bytes())
+    manifest["corpus"]["file"] = "../corpus.jsonl.gz"
+    manifest_path.write_bytes(_canonical(manifest))
+
+    with pytest.raises(RetrievalArtifactError, match="file name is incompatible"):
+        load_retrieval_artifacts(path)
+
+
 @pytest.mark.parametrize(
     ("section", "field", "value", "message"),
     [
@@ -289,8 +338,21 @@ def test_api_uses_prepared_bundle_and_exposes_safe_identity(
     provenance: RetrievalBuildProvenance,
 ) -> None:
     path, _ = _bundle(tmp_path / "bundle", corpus, provenance)
+    service_key = "precedent-artifact-service-key"
+    metrics_key = "precedent-artifact-metrics-key"
     client = OfflineASGIClient(
-        create_app(settings=ApiSettings(retrieval_artifact_dir=path, openai_api_key=None))
+        create_app(
+            settings=ApiSettings(
+                retrieval_artifact_dir=path,
+                openai_api_key=None,
+                precedent_api_key=SecretStr(service_key),
+                metrics_api_key=SecretStr(metrics_key),
+            )
+        ),
+        headers={
+            "X-Precedent-API-Key": service_key,
+            "X-Precedent-Metrics-Key": metrics_key,
+        },
     )
 
     health = client.get("/health")
