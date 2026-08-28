@@ -1,0 +1,166 @@
+{
+  "candidate_corpus": "upstream stage2_case_lookup.json raw Cited Case strings",
+  "components": {
+    "bm25": {
+      "b": 0.75,
+      "k1": 1.2
+    },
+    "dense": {
+      "dimensions": 384,
+      "encode_batch_size": 128,
+      "key": "bge_small",
+      "license": "MIT",
+      "model_id": "BAAI/bge-small-en-v1.5",
+      "query_prefix": "Represent this sentence for searching relevant passages: ",
+      "revision": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a"
+    }
+  },
+  "configuration": {
+    "bm25_weight": 1.0,
+    "component_depth": 1000,
+    "dense_weight": 1.0,
+    "k_values": [
+      1,
+      5,
+      10,
+      20
+    ],
+    "max_queries": null,
+    "method": "weighted_rrf",
+    "model_load_ms": 2465.7977759998175,
+    "model_max_sequence_length": 512,
+    "rank_constant": 60,
+    "score_batch_size": 64,
+    "tie_break": "ascending candidate ID"
+  },
+  "corpus_size": 48298,
+  "encoding": {
+    "corpus": {
+      "cache_file": "5c38ec7c405e_pooled_corpus_c9854b44f802b39c.npy",
+      "cache_hit": true,
+      "elapsed_ms": 0.9387069999320374,
+      "encoded_rows": 0,
+      "reused_rows": 0,
+      "shape": [
+        48298,
+        384
+      ]
+    },
+    "queries": {
+      "cache_file": "5c38ec7c405e_pooled_queries_0ff19e77a55f044f.npy",
+      "cache_hit": true,
+      "elapsed_ms": 0.48549099983574706,
+      "encoded_rows": 0,
+      "reused_rows": 0,
+      "shape": [
+        15546,
+        384
+      ]
+    },
+    "unique_query_texts": 15546
+  },
+  "index_build_ms": 773.7365450000198,
+  "modes": {
+    "authors_fact_pool": {
+      "latency_ms": {
+        "mean": 4.0003780429489675,
+        "p50": 3.5085370001297633,
+        "p95": 6.44966709995742
+      },
+      "metrics": {
+        "mrr": 0.01635378980834442,
+        "ndcg_at_1": 0.004425668879501106,
+        "ndcg_at_10": 0.014261535925958482,
+        "ndcg_at_20": 0.02000281546271453,
+        "ndcg_at_5": 0.01060903112304571,
+        "recall_at_1": 0.004425668879501106,
+        "recall_at_10": 0.028565680949507143,
+        "recall_at_20": 0.051498692416012876,
+        "recall_at_5": 0.017099175216254276
+      },
+      "queries": 9942,
+      "relevant_documents_per_query": {
+        "max": 1,
+        "mean": 1.0,
+        "p50": 1.0,
+        "p95": 1.0
+      }
+    },
+    "paired_fact_only": {
+      "latency_ms": {
+        "mean": 4.09903085900513,
+        "p50": 3.6114810000071884,
+        "p95": 7.306112500054953
+      },
+      "metrics": {
+        "mrr": 0.016501406253255784,
+        "ndcg_at_1": 0.004008417677121956,
+        "ndcg_at_10": 0.014754640271405326,
+        "ndcg_at_20": 0.020430419255508175,
+        "ndcg_at_5": 0.010850872197905837,
+        "recall_at_1": 0.004008417677121956,
+        "recall_at_10": 0.029962922136486624,
+        "recall_at_20": 0.052510271570297626,
+        "recall_at_5": 0.017737248221264657
+      },
+      "queries": 9979,
+      "relevant_documents_per_query": {
+        "max": 1,
+        "mean": 1.0,
+        "p50": 1.0,
+        "p95": 1.0
+      }
+    },
+    "paired_facts_principle": {
+      "latency_ms": {
+        "mean": 4.227021064835818,
+        "p50": 3.8114920000680286,
+        "p95": 6.74851760004458
+      },
+      "metrics": {
+        "mrr": 0.022827076505834515,
+        "ndcg_at_1": 0.009219360657380498,
+        "ndcg_at_10": 0.021571575310586694,
+        "ndcg_at_20": 0.028017439117276454,
+        "ndcg_at_5": 0.01694371422695776,
+        "recall_at_1": 0.009219360657380498,
+        "recall_at_10": 0.039382703677723216,
+        "recall_at_20": 0.06513678725323178,
+        "recall_at_5": 0.02475197915622808
+      },
+      "queries": 9979,
+      "relevant_documents_per_query": {
+        "max": 1,
+        "mean": 1.0,
+        "p50": 1.0,
+        "p95": 1.0
+      }
+    },
+    "paired_principle_only": {
+      "latency_ms": {
+        "mean": 4.255152212947309,
+        "p50": 3.7747110000054818,
+        "p95": 7.290426800022942
+      },
+      "metrics": {
+        "mrr": 0.023102099404818572,
+        "ndcg_at_1": 0.01282693656679026,
+        "ndcg_at_10": 0.021129164323643125,
+        "ndcg_at_20": 0.025564275805876172,
+        "ndcg_at_5": 0.017469274658520755,
+        "recall_at_1": 0.01282693656679026,
+        "recall_at_10": 0.03337007716204028,
+        "recall_at_20": 0.05130774626716104,
+        "recall_at_5": 0.021946086782242708
+      },
+      "queries": 9979,
+      "relevant_documents_per_query": {
+        "max": 1,
+        "mean": 1.0,
+        "p50": 1.0,
+        "p95": 1.0
+      }
+    }
+  },
+  "protocol": "pooled"
+}
