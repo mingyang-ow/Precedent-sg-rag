@@ -1,0 +1,720 @@
+{
+  "configuration": {
+    "b": 0.75,
+    "checkpoint_every_queries": 100,
+    "context_deduplication": "SHA-256 of NFKC whitespace-collapsed Paragraph per case",
+    "context_order": "source year descending, then URL, reference, and digest ascending",
+    "dense_model_key": "bge_small",
+    "evidence_cutoff_year": 2023,
+    "identity_policy": "NFKC, whitespace collapse, and case-folding only",
+    "k1": 1.2,
+    "k_values": [
+      1,
+      5,
+      10,
+      20,
+      50
+    ],
+    "max_passage_chars": 2000,
+    "max_profile_chars": 2000,
+    "max_profile_context_chars": 550,
+    "max_profile_identifier_chars": 300,
+    "max_profile_passages": 3,
+    "max_queries": null,
+    "model_load_ms": null,
+    "passage_window": "citation-centred when the cited identifier occurs; otherwise prefix",
+    "resumed_queries_by_mode": {
+      "facts_only": 100
+    },
+    "score_batch_size": 64,
+    "tie_break": "ascending conservative canonical case ID"
+  },
+  "dataset_audit": {
+    "canonical_candidate_identifiers": 47813,
+    "conservative_variants_merged": 662,
+    "coverage": {
+      "cold_start_unique_targets": 3387,
+      "modes": {
+        "facts_only": {
+          "cold_start_only_queries": 35,
+          "cold_start_target_labels": 4120,
+          "queries": 740,
+          "target_labels": 10978,
+          "warm_start_queries": 705,
+          "warm_start_query_percent": 95.27027027027027,
+          "warm_start_target_label_percent": 62.4703953361268,
+          "warm_start_target_labels": 6858
+        },
+        "facts_principle": {
+          "cold_start_only_queries": 2703,
+          "cold_start_target_labels": 4124,
+          "queries": 8057,
+          "target_labels": 10991,
+          "warm_start_queries": 5354,
+          "warm_start_query_percent": 66.45153282859626,
+          "warm_start_target_label_percent": 62.47839141115458,
+          "warm_start_target_labels": 6867
+        },
+        "principle_only": {
+          "cold_start_only_queries": 2696,
+          "cold_start_target_labels": 4124,
+          "queries": 8034,
+          "target_labels": 10985,
+          "warm_start_queries": 5338,
+          "warm_start_query_percent": 66.44261886980334,
+          "warm_start_target_label_percent": 62.45789713245335,
+          "warm_start_target_labels": 6861
+        }
+      },
+      "unique_test_targets": 6778,
+      "warm_start_unique_target_percent": 50.02950722927117,
+      "warm_start_unique_targets": 3391
+    },
+    "duplicate_historical_contexts_removed": 98,
+    "evidence_cutoff_year": 2023,
+    "historical_cases": 44426,
+    "historical_contexts_after_deduplication": 89795,
+    "historical_rows": 89893,
+    "identifier_matched_context_percent": 95.16899604655048,
+    "identifier_matched_contexts": 85457,
+    "paragraph_character_lengths": {
+      "max": 33426,
+      "p50": 6081.0,
+      "p95": 10976.300000000003
+    },
+    "profile_contexts_included": {
+      "0": 3387,
+      "1": 32424,
+      "2": 5437,
+      "3": 6565
+    },
+    "profile_identifiers_truncated": 296,
+    "profiles_with_context": 44426,
+    "profiles_without_context": 3387,
+    "raw_candidate_identifiers": 48475,
+    "unresolved_case_family_groups": 1440,
+    "unresolved_case_family_samples": [
+      [
+        "( Lim Swee Khiang and another v Borden Co (Pte) Ltd and others [2005]",
+        "Lim Swee Khiang and another v Borden Co (Pte) Ltd and others [2005]"
+      ],
+      [
+        "( Public Prosecutor v Shen Hanjie [2022]",
+        "Public Prosecutor v Shen Hanjie [2022]"
+      ],
+      [
+        "(Bouvier, Yves Charles Edgar v Accent Delight International Ltd [2015]",
+        "Bouvier, Yves Charles Edgar v Accent Delight International Ltd [2015]"
+      ],
+      [
+        "(Cheng-Wong Mei Ling Theresa v Oei Hong Leong [2006]",
+        "Cheng-Wong Mei Ling Theresa v Oei Hong Leong [2006]"
+      ],
+      [
+        "(Pickett v British Rail Engineering Ltd [1980]",
+        "Pickett v British Rail Engineering Ltd [1980]"
+      ],
+      [
+        "(Tan Cheng Bock v Attorney-General [2017]",
+        "Tan Cheng Bock v Attorney -General [2017]",
+        "Tan Cheng Bock v Attorney General [2017]",
+        "Tan Cheng Bock v Attorney- General [2017]",
+        "Tan Cheng Bock v Attorney-General [2017]"
+      ],
+      [
+        "(Unilever plc v. Pearce [1985]",
+        "Unilever plc v Pearce [1985]"
+      ],
+      [
+        "(Vita Health Laboratories Pte Ltd and others v Pang Seng Meng [2004]",
+        "Vita Health Laboratories Pte Ltd and Others v Pang Seng Meng [2004]"
+      ],
+      [
+        "(Yogambikai Nagarajah v Indian Overseas Bank and another appeal [1996]",
+        "Yogambikai Nagarajah v Indian Overseas Bank and another appeal [1996]",
+        "Yogambikai Nagarajah v. Indian Overseas Bank and another appeal [1996]"
+      ],
+      [
+        "), Sembcorp Marine Ltd v PPL Holdings Pte Ltd [2013]",
+        "Sembcorp Marine Ltd v PPL Holdings Pte Ltd [2013]"
+      ]
+    ],
+    "usable_historical_rows_before_deduplication": 89893
+  },
+  "index_build_ms": 3281.860271999989,
+  "modes": {
+    "facts_only": {
+      "all_queries": {
+        "breakdowns": {
+          "court": {
+            "SGCA": {
+              "metrics": {
+                "mrr": 0.1111147991421978,
+                "ndcg_at_1": 0.038834951456310676,
+                "ndcg_at_10": 0.0442904818455342,
+                "ndcg_at_20": 0.042440669673506154,
+                "ndcg_at_5": 0.04011057021753122,
+                "ndcg_at_50": 0.0481585065383836,
+                "recall_at_1": 0.0013938322318496053,
+                "recall_at_10": 0.028762904377852998,
+                "recall_at_20": 0.042277732389147386,
+                "recall_at_5": 0.011560847483324602,
+                "recall_at_50": 0.05994071783904115
+              },
+              "queries": 103
+            },
+            "SGCAI": {
+              "metrics": {
+                "mrr": 0.014871682400802243,
+                "ndcg_at_1": 0.0,
+                "ndcg_at_10": 0.0,
+                "ndcg_at_20": 0.0,
+                "ndcg_at_5": 0.0,
+                "ndcg_at_50": 0.016115185944113767,
+                "recall_at_1": 0.0,
+                "recall_at_10": 0.0,
+                "recall_at_20": 0.0,
+                "recall_at_5": 0.0,
+                "recall_at_50": 0.03939393939393939
+              },
+              "queries": 11
+            },
+            "SGHC": {
+              "metrics": {
+                "mrr": 0.07845596873604348,
+                "ndcg_at_1": 0.025896414342629483,
+                "ndcg_at_10": 0.026753073729074758,
+                "ndcg_at_20": 0.028965821549468498,
+                "ndcg_at_5": 0.02892085882199138,
+                "ndcg_at_50": 0.036582250438428186,
+                "recall_at_1": 0.0022630156720389004,
+                "recall_at_10": 0.020331137111668396,
+                "recall_at_20": 0.032215433240122535,
+                "recall_at_5": 0.012422972834415258,
+                "recall_at_50": 0.052114997821611615
+              },
+              "queries": 502
+            },
+            "SGHCF": {
+              "metrics": {
+                "mrr": 0.17076377183478048,
+                "ndcg_at_1": 0.08974358974358974,
+                "ndcg_at_10": 0.07751305755262988,
+                "ndcg_at_20": 0.07899426139088381,
+                "ndcg_at_5": 0.07649504891034126,
+                "ndcg_at_50": 0.10033880899055768,
+                "recall_at_1": 0.012977418443005487,
+                "recall_at_10": 0.07157303447789277,
+                "recall_at_20": 0.0874265663525704,
+                "recall_at_5": 0.047085095516269604,
+                "recall_at_50": 0.1519009875959825
+              },
+              "queries": 78
+            },
+            "SGHCR": {
+              "metrics": {
+                "mrr": 0.07433820797972461,
+                "ndcg_at_1": 0.0,
+                "ndcg_at_10": 0.026796514120005433,
+                "ndcg_at_20": 0.026886113046801618,
+                "ndcg_at_5": 0.023215606845474367,
+                "ndcg_at_50": 0.042956481766658096,
+                "recall_at_1": 0.0,
+                "recall_at_10": 0.01734847548680247,
+                "recall_at_20": 0.026005307784939112,
+                "recall_at_5": 0.00892263177544717,
+                "recall_at_50": 0.06432216917135167
+              },
+              "queries": 46
+            }
+          },
+          "year": {
+            "2024": {
+              "metrics": {
+                "mrr": 0.09454308391034141,
+                "ndcg_at_1": 0.03278688524590164,
+                "ndcg_at_10": 0.036505132646848674,
+                "ndcg_at_20": 0.03752626719001926,
+                "ndcg_at_5": 0.038024084023807754,
+                "ndcg_at_50": 0.04645837052076444,
+                "recall_at_1": 0.0036290130413548097,
+                "recall_at_10": 0.02810000459192728,
+                "recall_at_20": 0.041294113442619206,
+                "recall_at_5": 0.016330725848991694,
+                "recall_at_50": 0.06730328774737614
+              },
+              "queries": 427
+            },
+            "2025": {
+              "metrics": {
+                "mrr": 0.08742026857512283,
+                "ndcg_at_1": 0.03194888178913738,
+                "ndcg_at_10": 0.03093587584826373,
+                "ndcg_at_20": 0.03286526802782079,
+                "ndcg_at_5": 0.0301850086670221,
+                "ndcg_at_50": 0.043024229997102446,
+                "recall_at_1": 0.002371401460511059,
+                "recall_at_10": 0.024124072146619796,
+                "recall_at_20": 0.03485521986016927,
+                "recall_at_5": 0.014495074211115145,
+                "recall_at_50": 0.060183863014194254
+              },
+              "queries": 313
+            }
+          }
+        },
+        "latency_ms": {
+          "mean": 118.64471352704629,
+          "p50": 117.5383930000038,
+          "p95": 159.1868306500274
+        },
+        "metrics": {
+          "mrr": 0.09153032553206653,
+          "ndcg_at_1": 0.032432432432432434,
+          "ndcg_at_10": 0.03414948754150126,
+          "ndcg_at_20": 0.03555479051735964,
+          "ndcg_at_5": 0.03470836701478896,
+          "ndcg_at_50": 0.04500582189386416,
+          "recall_at_1": 0.0030970773321600882,
+          "recall_at_10": 0.02641829262519587,
+          "recall_at_20": 0.038570635481393764,
+          "recall_at_5": 0.015554294818376342,
+          "recall_at_50": 0.06429196350212489
+        },
+        "queries": 740,
+        "relevant_documents_per_query": {
+          "max": 104,
+          "mean": 14.835135135135134,
+          "p50": 12.0,
+          "p95": 39.0
+        }
+      },
+      "warm_start_definition": "query has at least one labelled target with <= cutoff historical context; warm metrics use only retrievable warm targets in the relevance denominator",
+      "warm_start_queries": {
+        "latency_ms": {
+          "mean": 118.34293474186371,
+          "p50": 117.28493999999046,
+          "p95": 159.0346407999732
+        },
+        "metrics": {
+          "mrr": 0.09583505045064782,
+          "ndcg_at_1": 0.03404255319148936,
+          "ndcg_at_10": 0.04074346617650702,
+          "ndcg_at_20": 0.04668461141628129,
+          "ndcg_at_5": 0.03840658983114255,
+          "ndcg_at_50": 0.061079266702072886,
+          "recall_at_1": 0.004954564353321935,
+          "recall_at_10": 0.04225264597868389,
+          "recall_at_20": 0.06152018580329973,
+          "recall_at_5": 0.025362392571550724,
+          "recall_at_50": 0.1014153731114641
+        },
+        "queries": 705,
+        "relevant_documents_per_query": {
+          "max": 49,
+          "mean": 9.727659574468085,
+          "p50": 8.0,
+          "p95": 25.0
+        }
+      }
+    },
+    "facts_principle": {
+      "all_queries": {
+        "breakdowns": {
+          "court": {
+            "SGCA": {
+              "metrics": {
+                "mrr": 0.059983193637339234,
+                "ndcg_at_1": 0.03054662379421222,
+                "ndcg_at_10": 0.05712077042612014,
+                "ndcg_at_20": 0.06422252854315416,
+                "ndcg_at_5": 0.04815539951053015,
+                "ndcg_at_50": 0.07422051635754566,
+                "recall_at_1": 0.021000194874792946,
+                "recall_at_10": 0.09056110020740246,
+                "recall_at_20": 0.11622402249411896,
+                "recall_at_5": 0.06432816915132028,
+                "recall_at_50": 0.16353849125151376
+              },
+              "queries": 1244
+            },
+            "SGCAI": {
+              "metrics": {
+                "mrr": 0.06932085504896167,
+                "ndcg_at_1": 0.04081632653061224,
+                "ndcg_at_10": 0.07372940975464594,
+                "ndcg_at_20": 0.07438146255128557,
+                "ndcg_at_5": 0.06424082224070603,
+                "ndcg_at_50": 0.0752620672465622,
+                "recall_at_1": 0.03571428571428571,
+                "recall_at_10": 0.11552478134110787,
+                "recall_at_20": 0.11807580174927114,
+                "recall_at_5": 0.08491253644314868,
+                "recall_at_50": 0.1206268221574344
+              },
+              "queries": 98
+            },
+            "SGHC": {
+              "metrics": {
+                "mrr": 0.08573298708575286,
+                "ndcg_at_1": 0.05017083258406761,
+                "ndcg_at_10": 0.08383311743293449,
+                "ndcg_at_20": 0.092875862525485,
+                "ndcg_at_5": 0.07305511956240061,
+                "ndcg_at_50": 0.10335441626241985,
+                "recall_at_1": 0.03938194606552659,
+                "recall_at_10": 0.12819168581250004,
+                "recall_at_20": 0.16149217245360417,
+                "recall_at_5": 0.09603683111048068,
+                "recall_at_50": 0.21052337653199243
+              },
+              "queries": 5561
+            },
+            "SGHCF": {
+              "metrics": {
+                "mrr": 0.16045393892094745,
+                "ndcg_at_1": 0.10069444444444445,
+                "ndcg_at_10": 0.15334685308448873,
+                "ndcg_at_20": 0.166118816793278,
+                "ndcg_at_5": 0.13657508261639706,
+                "ndcg_at_50": 0.18140071876632397,
+                "recall_at_1": 0.07877604166666667,
+                "recall_at_10": 0.21979166666666666,
+                "recall_at_20": 0.26524884259259257,
+                "recall_at_5": 0.17171585648148147,
+                "recall_at_50": 0.3360677083333333
+              },
+              "queries": 576
+            },
+            "SGHCR": {
+              "metrics": {
+                "mrr": 0.06348467937440136,
+                "ndcg_at_1": 0.03806228373702422,
+                "ndcg_at_10": 0.06029334743363262,
+                "ndcg_at_20": 0.06853773249387744,
+                "ndcg_at_5": 0.04995033795207375,
+                "ndcg_at_50": 0.07934597439713686,
+                "recall_at_1": 0.026239907727797,
+                "recall_at_10": 0.09622260668973472,
+                "recall_at_20": 0.12655709342560553,
+                "recall_at_5": 0.0655997693194925,
+                "recall_at_50": 0.17453863898500577
+              },
+              "queries": 578
+            }
+          },
+          "year": {
+            "2024": {
+              "metrics": {
+                "mrr": 0.08596208790147389,
+                "ndcg_at_1": 0.04875474883917265,
+                "ndcg_at_10": 0.08454823702329496,
+                "ndcg_at_20": 0.09372223537565012,
+                "ndcg_at_5": 0.07375449785311652,
+                "ndcg_at_50": 0.10440065287759198,
+                "recall_at_1": 0.03747585011143291,
+                "recall_at_10": 0.13023700418790074,
+                "recall_at_20": 0.1636827248280439,
+                "recall_at_5": 0.09816213657382193,
+                "recall_at_50": 0.21360615268886968
+              },
+              "queries": 4738
+            },
+            "2025": {
+              "metrics": {
+                "mrr": 0.08436303672287024,
+                "ndcg_at_1": 0.051220247062368184,
+                "ndcg_at_10": 0.08046624940871681,
+                "ndcg_at_20": 0.08885452756447451,
+                "ndcg_at_5": 0.0694637449691099,
+                "ndcg_at_50": 0.09947526593889232,
+                "recall_at_1": 0.0396530079341167,
+                "recall_at_10": 0.1211229716351741,
+                "recall_at_20": 0.15203876669679622,
+                "recall_at_5": 0.08862286402961306,
+                "recall_at_50": 0.20137878592232314
+              },
+              "queries": 3319
+            }
+          }
+        },
+        "latency_ms": {
+          "mean": 204.83932243477477,
+          "p50": 204.23721800011663,
+          "p95": 266.3303332002215
+        },
+        "metrics": {
+          "mrr": 0.08530337487407094,
+          "ndcg_at_1": 0.04977038599975177,
+          "ndcg_at_10": 0.08286670333919606,
+          "ndcg_at_20": 0.09171703217032658,
+          "ndcg_at_5": 0.07198696541895766,
+          "ndcg_at_50": 0.10237168933662834,
+          "recall_at_1": 0.03837270834818201,
+          "recall_at_10": 0.12648257027422322,
+          "recall_at_20": 0.1588861135536724,
+          "recall_at_5": 0.09423252932866502,
+          "recall_at_50": 0.20856921210327106
+        },
+        "queries": 8057,
+        "relevant_documents_per_query": {
+          "max": 23,
+          "mean": 1.3641553928261139,
+          "p50": 1.0,
+          "p95": 3.0
+        }
+      },
+      "warm_start_definition": "query has at least one labelled target with <= cutoff historical context; warm metrics use only retrievable warm targets in the relevance denominator",
+      "warm_start_queries": {
+        "latency_ms": {
+          "mean": 206.70411298617483,
+          "p50": 205.67397400009213,
+          "p95": 268.39947430012205
+        },
+        "metrics": {
+          "mrr": 0.1271293133935247,
+          "ndcg_at_1": 0.07415016809861785,
+          "ndcg_at_10": 0.12909941380416862,
+          "ndcg_at_20": 0.14316512686360358,
+          "ndcg_at_5": 0.11212597774781005,
+          "ndcg_at_50": 0.1596760218705093,
+          "recall_at_1": 0.06001774635890965,
+          "recall_at_10": 0.20034266457940894,
+          "recall_at_20": 0.25280794094023346,
+          "recall_at_5": 0.14975858335633324,
+          "recall_at_50": 0.33100235094181346
+        },
+        "queries": 5354,
+        "relevant_documents_per_query": {
+          "max": 17,
+          "mean": 1.2825924542398206,
+          "p50": 1.0,
+          "p95": 3.0
+        }
+      }
+    },
+    "principle_only": {
+      "all_queries": {
+        "breakdowns": {
+          "court": {
+            "MIXED": {
+              "metrics": {
+                "mrr": 0.08343599731733388,
+                "ndcg_at_1": 0.0,
+                "ndcg_at_10": 0.07595910582432591,
+                "ndcg_at_20": 0.08624820653537196,
+                "ndcg_at_5": 0.07055696286629244,
+                "ndcg_at_50": 0.08624820653537196,
+                "recall_at_1": 0.0,
+                "recall_at_10": 0.09953703703703703,
+                "recall_at_20": 0.11805555555555554,
+                "recall_at_5": 0.06018518518518518,
+                "recall_at_50": 0.11805555555555554
+              },
+              "queries": 6
+            },
+            "SGCA": {
+              "metrics": {
+                "mrr": 0.05864586552201806,
+                "ndcg_at_1": 0.030694668820678513,
+                "ndcg_at_10": 0.05708555000887228,
+                "ndcg_at_20": 0.06312331668670403,
+                "ndcg_at_5": 0.047424337809401064,
+                "ndcg_at_50": 0.07201494843313773,
+                "recall_at_1": 0.02083272139814951,
+                "recall_at_10": 0.09348289029226024,
+                "recall_at_20": 0.11447593870857199,
+                "recall_at_5": 0.06492265139276449,
+                "recall_at_50": 0.15533712383470058
+              },
+              "queries": 1238
+            },
+            "SGCAI": {
+              "metrics": {
+                "mrr": 0.08492051582081189,
+                "ndcg_at_1": 0.05102040816326531,
+                "ndcg_at_10": 0.09059231963022293,
+                "ndcg_at_20": 0.09032268427971572,
+                "ndcg_at_5": 0.08058971432070862,
+                "ndcg_at_50": 0.0942948581067829,
+                "recall_at_1": 0.04591836734693878,
+                "recall_at_10": 0.13848396501457727,
+                "recall_at_20": 0.13848396501457727,
+                "recall_at_5": 0.10532069970845481,
+                "recall_at_50": 0.1553692905733722
+              },
+              "queries": 98
+            },
+            "SGHC": {
+              "metrics": {
+                "mrr": 0.08677237482615313,
+                "ndcg_at_1": 0.04871887405268856,
+                "ndcg_at_10": 0.08642637637679576,
+                "ndcg_at_20": 0.09429981272878957,
+                "ndcg_at_5": 0.07378527948495711,
+                "ndcg_at_50": 0.10461076933847094,
+                "recall_at_1": 0.037514074714975344,
+                "recall_at_10": 0.13537823905235608,
+                "recall_at_20": 0.16416545812776964,
+                "recall_at_5": 0.09811452054814991,
+                "recall_at_50": 0.21191232694731668
+              },
+              "queries": 5542
+            },
+            "SGHCF": {
+              "metrics": {
+                "mrr": 0.1610534824254716,
+                "ndcg_at_1": 0.10452961672473868,
+                "ndcg_at_10": 0.15550473536792248,
+                "ndcg_at_20": 0.1682095837442204,
+                "ndcg_at_5": 0.13348981562378462,
+                "ndcg_at_50": 0.18167901302850806,
+                "recall_at_1": 0.08012485481997678,
+                "recall_at_10": 0.22941347270615564,
+                "recall_at_20": 0.27547909407665505,
+                "recall_at_5": 0.1661295005807201,
+                "recall_at_50": 0.3364401858304297
+              },
+              "queries": 574
+            },
+            "SGHCR": {
+              "metrics": {
+                "mrr": 0.06971013949012266,
+                "ndcg_at_1": 0.04513888888888889,
+                "ndcg_at_10": 0.06671113862274326,
+                "ndcg_at_20": 0.07562535106335723,
+                "ndcg_at_5": 0.05421726076215879,
+                "ndcg_at_50": 0.08273123250532971,
+                "recall_at_1": 0.03153935185185185,
+                "recall_at_10": 0.10451388888888889,
+                "recall_at_20": 0.1375,
+                "recall_at_5": 0.06741898148148148,
+                "recall_at_50": 0.1677662037037037
+              },
+              "queries": 576
+            }
+          },
+          "year": {
+            "2024": {
+              "metrics": {
+                "mrr": 0.08698234220894933,
+                "ndcg_at_1": 0.04767959313413859,
+                "ndcg_at_10": 0.08788255483204996,
+                "ndcg_at_20": 0.09566795606195194,
+                "ndcg_at_5": 0.07491684912337152,
+                "ndcg_at_50": 0.10526744301808327,
+                "recall_at_1": 0.03630936875636839,
+                "recall_at_10": 0.13874105758762603,
+                "recall_at_20": 0.1671487583363257,
+                "recall_at_5": 0.10031994828078192,
+                "recall_at_50": 0.21131000292875968
+              },
+              "queries": 4719
+            },
+            "2025": {
+              "metrics": {
+                "mrr": 0.08531071245264377,
+                "ndcg_at_1": 0.05205811138014528,
+                "ndcg_at_10": 0.08186203712894016,
+                "ndcg_at_20": 0.08993149160703802,
+                "ndcg_at_5": 0.06932733349007844,
+                "ndcg_at_50": 0.10048762557768938,
+                "recall_at_1": 0.03949001210653753,
+                "recall_at_10": 0.12582655943733426,
+                "recall_at_20": 0.15504114781505823,
+                "recall_at_5": 0.08914122852530844,
+                "recall_at_50": 0.20353251470079556
+              },
+              "queries": 3304
+            },
+            "MIXED": {
+              "metrics": {
+                "mrr": 0.23458016073699986,
+                "ndcg_at_1": 0.18181818181818182,
+                "ndcg_at_10": 0.13418888830176437,
+                "ndcg_at_20": 0.14973735048973874,
+                "ndcg_at_5": 0.11024167244950535,
+                "ndcg_at_50": 0.16677636892002767,
+                "recall_at_1": 0.048484848484848485,
+                "recall_at_10": 0.14545454545454545,
+                "recall_at_20": 0.19090909090909092,
+                "recall_at_5": 0.09696969696969697,
+                "recall_at_50": 0.2515151515151515
+              },
+              "queries": 11
+            }
+          }
+        },
+        "latency_ms": {
+          "mean": 163.26148543900936,
+          "p50": 163.32406099996888,
+          "p95": 235.7069757999511
+        },
+        "metrics": {
+          "mrr": 0.08649696895639457,
+          "ndcg_at_1": 0.049663928304705,
+          "ndcg_at_10": 0.08547000556357748,
+          "ndcg_at_20": 0.09338285334595368,
+          "ndcg_at_5": 0.07266651472010877,
+          "ndcg_at_50": 0.10338594953561625,
+          "recall_at_1": 0.03763408569761461,
+          "recall_at_10": 0.13343913407231264,
+          "recall_at_20": 0.16220200933159987,
+          "recall_at_5": 0.09571808833100517,
+          "recall_at_50": 0.20816654207853025
+        },
+        "queries": 8034,
+        "relevant_documents_per_query": {
+          "max": 23,
+          "mean": 1.367313915857605,
+          "p50": 1.0,
+          "p95": 3.0
+        }
+      },
+      "warm_start_definition": "query has at least one labelled target with <= cutoff historical context; warm metrics use only retrievable warm targets in the relevance denominator",
+      "warm_start_queries": {
+        "latency_ms": {
+          "mean": 165.49318674185085,
+          "p50": 165.29372950003562,
+          "p95": 238.0303683999159
+        },
+        "metrics": {
+          "mrr": 0.12803892638381245,
+          "ndcg_at_1": 0.0732484076433121,
+          "ndcg_at_10": 0.13260424090813042,
+          "ndcg_at_20": 0.14494196450973942,
+          "ndcg_at_5": 0.11287676862035892,
+          "ndcg_at_50": 0.16050644282392368,
+          "recall_at_1": 0.05894873498294035,
+          "recall_at_10": 0.2100926587022393,
+          "recall_at_20": 0.25557568143549897,
+          "recall_at_5": 0.15135324686406829,
+          "recall_at_50": 0.32825392701392747
+        },
+        "queries": 5338,
+        "relevant_documents_per_query": {
+          "max": 17,
+          "mean": 1.2853128512551517,
+          "p50": 1.0,
+          "p95": 3.0
+        }
+      }
+    }
+  },
+  "protocol": "full_corpus_temporal_test_historical_context",
+  "representation": {
+    "candidate_cases": 47813,
+    "case_aggregation": "one bounded profile per conservative canonical case ID",
+    "cold_start_fallback": "case identifier only",
+    "document_source_fields": [
+      "Cited Case",
+      "Paragraph",
+      "Year",
+      "Judgment_URL",
+      "Judgment_Reference"
+    ],
+    "documents": 47813,
+    "name": "historical_case_profile"
+  },
+  "retriever": "bm25"
+}

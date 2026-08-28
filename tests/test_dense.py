@@ -85,4 +85,57 @@ def test_embedding_cache_reuses_exact_text_rows(tmp_path) -> None:
     assert model.calls == [["alpha", "beta"], ["gamma"]]
     assert target.reused_rows == 1
     assert target.encoded_rows == 1
+    assert target.resumed_rows == 0
     assert target.values.tolist() == [[4.0, 5.0], [5.0, 6.0]]
+
+
+def test_embedding_cache_resumes_after_an_interrupted_chunk(tmp_path) -> None:
+    class InterruptingModel:
+        def __init__(self) -> None:
+            self.calls: list[list[str]] = []
+
+        def encode(self, texts, **_kwargs):
+            self.calls.append(texts)
+            if len(self.calls) == 2:
+                raise RuntimeError("simulated shutdown")
+            return np.asarray([[len(text), len(text) + 1] for text in texts], dtype=np.float32)
+
+    texts = [f"text-{index}" for index in range(10)]
+    interrupted_model = InterruptingModel()
+    with pytest.raises(RuntimeError, match="simulated shutdown"):
+        encode_with_cache(
+            interrupted_model,
+            texts,
+            cache_dir=tmp_path,
+            model_key="fake",
+            revision="revision",
+            role="resumable",
+            batch_size=1,
+            dimensions=2,
+        )
+
+    class ResumingModel:
+        def __init__(self) -> None:
+            self.calls: list[list[str]] = []
+
+        def encode(self, texts, **_kwargs):
+            self.calls.append(texts)
+            return np.asarray([[len(text), len(text) + 1] for text in texts], dtype=np.float32)
+
+    resuming_model = ResumingModel()
+    artifact = encode_with_cache(
+        resuming_model,
+        texts,
+        cache_dir=tmp_path,
+        model_key="fake",
+        revision="revision",
+        role="resumable",
+        batch_size=1,
+        dimensions=2,
+    )
+
+    assert interrupted_model.calls[0] == texts[:4]
+    assert resuming_model.calls[0] == texts[4:8]
+    assert artifact.resumed_rows == 4
+    assert artifact.encoded_rows == 10
+    assert artifact.values.tolist() == [[float(len(text)), float(len(text) + 1)] for text in texts]
