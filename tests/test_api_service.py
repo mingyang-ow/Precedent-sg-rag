@@ -648,10 +648,10 @@ def test_retrieval_unavailable_is_observable_without_exposing_failure_text() -> 
 def test_request_id_is_preserved_when_safe_and_replaced_when_invalid() -> None:
     client, _, _ = client_for()
 
-    preserved = client.get("/health", headers={"X-Request-ID": "portfolio-demo_123"})
+    preserved = client.get("/health", headers={"X-Request-ID": "precedent-demo_123"})
     replaced = client.get("/health", headers={"X-Request-ID": "unsafe id with spaces"})
 
-    assert preserved.headers["X-Request-ID"] == "portfolio-demo_123"
+    assert preserved.headers["X-Request-ID"] == "precedent-demo_123"
     assert replaced.headers["X-Request-ID"] != "unsafe id with spaces"
     assert re.fullmatch(r"[0-9a-f-]{36}", replaced.headers["X-Request-ID"])
 
@@ -659,7 +659,7 @@ def test_request_id_is_preserved_when_safe_and_replaced_when_invalid() -> None:
 def test_logs_are_structured_and_never_contain_api_key(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    secret = "sk-test-portfolio-secret"
+    secret = "sk-test-precedent-secret"
     client, _, _ = client_for(provider=FakeProvider(), api_key=secret)
 
     with caplog.at_level("INFO", logger="sg_legal_rag.api"):
