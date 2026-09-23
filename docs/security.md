@@ -3,7 +3,7 @@
 Precedent treats the user query, retrieved legal text, and provider output as untrusted. The
 application—not the model—enforces authentication, resource limits, the output schema, evidence
 visibility, case/evidence consistency, passage integrity, and response construction. These are
-practical portfolio controls, not a claim that the service is secure or suitable for legal-system
+practical application controls, not a claim that the service is secure or suitable for legal-system
 deployment.
 
 ## Assets and actors
@@ -65,7 +65,7 @@ to its externally mounted artifact bundle. The LLM is not a trust boundary.
 
 ## Access policy
 
-The split is intentional and keeps the portfolio demo useful without leaving costly routes open:
+The split is intentional and keeps the project demo useful without leaving costly routes open:
 
 | Surface | Default policy | Reason |
 | --- | --- | --- |

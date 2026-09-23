@@ -15,7 +15,7 @@ retrieval, explicit abstention, deterministic citation integrity, and applicatio
 - Evaluation is treated as an engineering system. Clean-room adjudication, citation audits, and an
   independent non-OpenAI semantic judge exposed label leakage, evaluator brittleness, and judge bias.
 
-This is a portfolio and evaluation project, not legal advice or a claim of production legal
+This is a research and evaluation project, not legal advice or a claim of production legal
 reliability. It uses the public, CC BY 4.0
 [SG-LegalCite](https://huggingface.co/datasets/anonymousmeowmeow/SG-LegalCite) dataset.
 
@@ -294,7 +294,7 @@ uv run pytest
 Project code is MIT licensed. Dataset material remains under its upstream CC BY 4.0 licence; the
 project licence does not relicense the dataset or source judgments.
 
-## Portfolio summary
+## Project summary
 
 Precedent demonstrates the full reasoning loop behind a production-oriented RAG system: benchmark
 retrieval before generation, repair the representation rather than hide weak retrieval, enforce
